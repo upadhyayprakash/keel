@@ -4,7 +4,7 @@ All notable changes to Keel. The format follows [Keep a Changelog](https://keepa
 
 ## [Unreleased]
 
-## [0.1.0]
+## [0.1.0] - 2026-10-12
 
 The first release: one command language in your terminal and in the browser.
 
