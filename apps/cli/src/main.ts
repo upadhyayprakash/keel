@@ -2,9 +2,11 @@ import { mkdirSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { createInterface } from 'node:readline/promises';
-import { autoBackup, Keel, renderText, VERSION, type AutoBackupOptions, type Block, type Paint } from '@keel/core';
+import { autoBackup, Keel, VERSION, type AutoBackupOptions } from '@keel/core';
 import { completionScript, formatSuggestions, isShell } from './completion';
-import { ansiPaint, argvToLine, banner, formatPrompt, needsProbe, probeBackground, resolveTheme, useColor } from './terminal';
+import { runCommand } from './run';
+import { questionAsker, runShell } from './shell';
+import { ansiPaint, argvToLine, banner, needsProbe, probeBackground, resolveTheme, useColor } from './terminal';
 
 function databaseUrl(): string {
   const url = process.env.KEEL_DB_URL || `file:${join(homedir(), '.keel', 'keel.db')}`;
@@ -12,11 +14,15 @@ function databaseUrl(): string {
   return url;
 }
 
-/** Daily backups go next to the database file (or ~/.keel/backups for a remote one). */
+/** Keel's own folder: next to the database file, or ~/.keel for a remote one. */
+function keelHome(url: string): string {
+  return url.startsWith('file:') ? dirname(url.slice('file:'.length)) : join(homedir(), '.keel');
+}
+
+/** Daily backups go in a backups folder in Keel's own folder. */
 function backupOptions(url: string): AutoBackupOptions {
   const keep = Number(process.env.KEEL_BACKUP_KEEP ?? 14);
-  const dir =
-    process.env.KEEL_BACKUP_DIR || (url.startsWith('file:') ? join(dirname(url.slice('file:'.length)), 'backups') : join(homedir(), '.keel', 'backups'));
+  const dir = process.env.KEEL_BACKUP_DIR || join(keelHome(url), 'backups');
   return { dir, keep: Number.isFinite(keep) ? keep : 14 };
 }
 
@@ -75,60 +81,37 @@ async function main(): Promise<number> {
     const reported = color && needsProbe(process.env, state.theme) ? await probeBackground(process.stdin, process.stdout) : null;
     const paint = color ? ansiPaint(resolveTheme(process.env, state.theme, reported)) : undefined;
 
+    const tty = Boolean(process.stdin.isTTY && process.stdout.isTTY);
+    const painter = paint ?? ((text: string) => text);
+
+    // `keel` alone in a terminal opens the Keel shell; piped, it just prints the banner.
+    if ((args.length === 0 && tty) || args[0] === 'shell') {
+      await backup(keel, url);
+      return await runShell(keel, {
+        paint: painter,
+        color: Boolean(paint),
+        historyFile: join(keelHome(url), 'history'),
+        afterCommand: () => backup(keel, url),
+      });
+    }
+
     let code = 0;
     if (args.length === 0) {
-      process.stdout.write(banner(paint ?? ((t) => t), VERSION, keel.storage) + '\n');
+      process.stdout.write(banner(painter, VERSION, keel.storage) + '\n');
     } else {
-      const interactive = Boolean(process.stdin.isTTY && process.stdout.isTTY) && !args.includes('--json');
-      code = await runCommand(keel, argvToLine(args), paint ?? ((t) => t), Boolean(paint), interactive);
+      const interactive = tty && !args.includes('--json');
+      const rl = interactive ? createInterface({ input: process.stdin, output: process.stdout }) : null;
+      try {
+        code = await runCommand(keel, argvToLine(args), painter, Boolean(paint), rl ? questionAsker(rl) : null);
+      } finally {
+        rl?.close();
+      }
     }
     await backup(keel, url);
     return code;
   } finally {
     if (args[0] !== 'serve') keel.close();
   }
-}
-
-const hasError = (blocks: Block[]) => blocks.some((b) => b.kind === 'status' && b.level === 'error');
-
-/** Runs one command; answers its questions at the prompt, or skips them when not interactive. */
-async function runCommand(keel: Keel, line: string, paint: Paint, color: boolean, interactive: boolean): Promise<number> {
-  const print = (blocks: Block[]) => {
-    if (blocks.length) process.stdout.write(renderText(blocks, color ? paint : undefined) + '\n');
-  };
-  let result = await keel.exec(line);
-  let failed = hasError(result.blocks) || Boolean(result.failed);
-  print(result.blocks);
-  if (!result.question) return failed ? 1 : 0;
-
-  const rl = interactive ? createInterface({ input: process.stdin, output: process.stdout }) : null;
-  let current: AbortController | null = null;
-  // Ctrl+C or Ctrl+D cancels the command, keeping whatever was already saved.
-  rl?.on('SIGINT', () => current?.abort());
-  rl?.on('close', () => current?.abort());
-  let lastHint: string | undefined;
-  try {
-    while (result.question && result.session) {
-      let answer: string | null = '';
-      if (rl) {
-        current = new AbortController();
-        const showHint = result.question.hint !== lastHint;
-        lastHint = result.question.hint;
-        try {
-          answer = await rl.question(formatPrompt(result.question, paint, showHint), { signal: current.signal });
-        } catch {
-          answer = null;
-          process.stdout.write('\n');
-        }
-      }
-      result = await keel.answer(result.session, answer);
-      failed ||= hasError(result.blocks);
-      print(result.blocks);
-    }
-  } finally {
-    rl?.close();
-  }
-  return failed ? 1 : 0;
 }
 
 main().then(

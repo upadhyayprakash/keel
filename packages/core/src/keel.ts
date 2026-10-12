@@ -2,15 +2,15 @@ import { eq } from 'drizzle-orm';
 import type { Client as LibsqlClient } from '@libsql/client';
 import { fail, hint, s, warn, type Block, type RunResult, type Span, type Tone } from './blocks';
 import { readCommitment } from './commands/capture';
-import { commands, expand, findCommand, type Command, type Flow } from './commands/index';
-import { SOURCES } from './commands/shared';
-import { formatDay, parseDue } from './dates';
+import { expand, findCommand, type Command, type Flow } from './commands/index';
+import { formatDay } from './dates';
 import { migrateDb, openDb } from './db/client';
 import * as t from './db/schema';
 import { KeelError } from './errors';
 import type { ThemeSetting } from './palettes';
 import { classify, tokenize, type Parsed } from './parse';
 import { renderText } from './render-text';
+import { suggest, type Completion } from './complete';
 import { Store } from './store';
 import { VERSION } from './version';
 
@@ -31,23 +31,7 @@ export interface KeelState {
   storage: 'local' | 'remote';
 }
 
-export interface Suggestion {
-  insert: string;
-  label: string;
-  detail?: string;
-}
-
-export interface Completion {
-  /** Where the token being completed starts; replace from here with `insert`. */
-  replaceFrom: number;
-  suggestions: Suggestion[];
-  /** What the command will create, for owe/wait. */
-  preview: Span[] | null;
-}
-
-const REF_COMMANDS = new Set(['done', 'drop', 'renegotiate', 'nudge', 'set', 'show', 'focus']);
-const PROJECT_COMMANDS = new Set(['switch']);
-const DUE_PRESETS = ['today', 'tomorrow', 'mon', 'tue', 'wed', 'thu', 'fri', 'eow', '+3d', '+1w', '+2w'];
+export type { Completion, Suggestion } from './complete';
 
 function errorBlocks(e: unknown): Block[] {
   if (e instanceof KeelError) return [fail(e.message), ...(e.hint ? [hint(e.hint)] : [])];
@@ -194,41 +178,11 @@ export class Keel {
   }
 
   async complete(input: string): Promise<Completion> {
-    const k = this.store;
-    const start = /\S*$/.exec(input)?.index ?? input.length;
-    const current = input.slice(start);
-    const before = input.slice(0, start).trim().split(/\s+/).filter(Boolean);
-    if (before[0] === 'keel') before.shift();
-    const cmd = before[0]?.toLowerCase();
-    const result: Completion = { replaceFrom: start, suggestions: [], preview: null };
-    const add = (insert: string, label = insert, detail?: string) => result.suggestions.push({ insert, label, detail });
-
-    if (!cmd) {
-      for (const c of commands) if (c.name.startsWith(current.toLowerCase())) add(c.name, c.usage, c.summary);
-    } else if (current.startsWith('@')) {
-      for (const person of await k.listPeople()) if (`@${person.handle}`.startsWith(current)) add(`@${person.handle}`, `@${person.handle}`, person.name);
-    } else if (current.startsWith('+') || (PROJECT_COMMANDS.has(cmd) && before.length === 1)) {
-      const prefix = current.replace(/^\+/, '');
-      const plus = current.startsWith('+') ? '+' : '';
-      for (const c of current.startsWith('+') ? await k.listClients() : []) if (c.slug.startsWith(prefix)) add(`+${c.slug}`, `+${c.slug}`, c.name);
-      for (const pv of await k.listProjects()) if (pv.path.startsWith(prefix)) add(`${plus}${pv.path}`, `${plus}${pv.path}`, pv.project.name);
-    } else if (current.startsWith('due:')) {
-      for (const preset of DUE_PRESETS) {
-        if (!`due:${preset}`.startsWith(current)) continue;
-        const day = parseDue(preset, k.now());
-        add(`due:${preset}`, `due:${preset}`, day ? formatDay(day) : undefined);
-      }
-    } else if (current.startsWith('from:')) {
-      for (const src of SOURCES) if (`from:${src}`.startsWith(current)) add(`from:${src}`);
-    } else if (cmd === 'theme' && before.length === 1) {
-      for (const th of ['light', 'dark', 'auto']) if (th.startsWith(current)) add(th);
-    } else if (REF_COMMANDS.has(cmd) && /^c?\d*$/i.test(current)) {
-      const open = await k.commitmentViews([eq(t.commitments.status, 'open')]);
-      for (const v of open) if (`c${v.c.refNo}`.startsWith(current.toLowerCase() || 'c')) add(`c${v.c.refNo}`, `c${v.c.refNo}`, v.c.title);
-    }
-    result.suggestions = result.suggestions.slice(0, 8);
-
-    if ((cmd === 'owe' || cmd === 'wait') && input.trim().split(/\s+/).length > 1) {
+    const result: Completion = { ...(await suggest(this.store, input)), preview: null };
+    const words = input.trim().split(/\s+/);
+    if (words[0] === 'keel') words.shift();
+    const cmd = words[0]?.toLowerCase();
+    if ((cmd === 'owe' || cmd === 'wait') && words.length > 1) {
       result.preview = await this.preview(input, cmd);
     }
     return result;

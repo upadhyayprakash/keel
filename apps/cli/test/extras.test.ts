@@ -53,3 +53,14 @@ describe('terminal background (OSC 11)', () => {
     expect(resolveTheme({ COLORFGBG: '15;0' }, 'auto', 'light')).toBe('dark');
   });
 });
+
+describe('banner', () => {
+  it('shows keel-prefixed commands outside the shell and bare ones inside', async () => {
+    const { banner } = await import('../src/terminal');
+    const plain = (text: string) => text;
+    expect(banner(plain, '1.0.0', 'local')).toContain('keel serve');
+    const shell = banner(plain, '1.0.0', 'local', { shell: true });
+    expect(shell).toContain('exit             leave (or Ctrl+D)');
+    expect(shell).not.toContain('keel serve');
+  });
+});

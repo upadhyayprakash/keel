@@ -94,6 +94,7 @@ The browser terminal accepts **exactly the same commands as the CLI**; the `keel
 | `keel review` | Guided weekly review |
 | `keel summary [day\|week] [+client]` | Summary: done, slipped, renegotiated, waiting, time per client |
 | `keel theme [light\|dark\|auto]` | Pick the color theme (see section 4) |
+| `keel` (or `keel shell`) | Open the Keel shell: commands without the `keel` prefix, Tab completion, history, `exit` to leave |
 | `keel serve` | Start the browser terminal on localhost |
 | `keel export [--json\|--md]` | Export everything: JSON to back up or move, Markdown to read. Your data is always yours |
 | `keel import <file.json>` | Restore a JSON export into an empty database, in one batch (a bad file saves nothing) |

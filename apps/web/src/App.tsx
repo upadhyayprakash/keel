@@ -141,7 +141,8 @@ export function App() {
   const accept = (index: number) => {
     const pick = suggestions[index];
     if (!pick || !completion) return;
-    setInput(input.slice(0, completion.replaceFrom) + pick.insert + ' ');
+    setInput(input.slice(0, completion.replaceFrom) + pick.insert + (pick.continues ? '' : ' '));
+    setDismissed(false);
     inputRef.current?.focus();
   };
 

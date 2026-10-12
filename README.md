@@ -17,9 +17,9 @@ A personal app for tracking promises, priorities, project context and decisions,
 The name: a keel keeps a boat steady and on course. Keel does the same for the day: steady focus, kept promises, sound decisions.
 
 <p align="center">
-  <img src="assets/brand/png/keel-cli-welcome.png" alt="The keel command in a terminal: the hull-and-keel logo, the KEEL wordmark and the five main commands" width="560">
+  <img src="assets/brand/png/keel-cli-welcome.png" alt="The Keel shell in a terminal: the logo, today with focus and follow-ups, and the prompt showing the project you are working on" width="560">
 </p>
-<p align="center"><em>In your terminal (dark theme)</em></p>
+<p align="center"><em>The Keel shell in your terminal: just type <code>keel</code> (dark theme)</em></p>
 
 <p align="center">
   <img src="assets/brand/png/keel-browser.png" alt="keel serve in the browser, showing today: focus, waiting-on follow-ups and what's coming up" width="820">
@@ -49,7 +49,7 @@ keel owe send pricing deck @ravi due:thu from:meeting
 keel today
 ```
 
-New to Keel? The [Get started guide](docs/get-started.md) walks from install to your first Friday review. Run `keel help` for every command, and `keel serve` for the browser terminal at http://localhost:4242 (desktop, localhost only).
+New to Keel? The [Get started guide](docs/get-started.md) walks from install to your first Friday review. Run `keel` on its own for the Keel shell (no `keel` prefix, Tab completion, history). Run `keel help` for every command, and `keel serve` for the browser terminal at http://localhost:4242 (desktop, localhost only).
 
 Tab completion for people, projects, refs and dates:
 

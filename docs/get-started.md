@@ -35,7 +35,7 @@ keel --version
 keel
 ```
 
-`keel` on its own shows the logo and the five commands you'll use most.
+`keel` on its own opens the **Keel shell**: you type commands without the `keel` prefix, Tab completes, ↑ brings back earlier commands, and `exit` (or Ctrl+D) leaves. It opens on your `today`. Everything in this guide works in the shell too; just leave out `keel`.
 
 > If `npm install -g` fails with `EACCES`, your Node install wants root for global packages. Install Node through a version manager instead (recommended), rather than using `sudo`.
 

@@ -4,6 +4,11 @@ All notable changes to Keel. The format follows [Keep a Changelog](https://keepa
 
 ## [Unreleased]
 
+### Added
+
+- The Keel shell: run `keel` on its own (or `keel shell`) for a session where you type commands without the `keel` prefix. The prompt shows the project you're working on, Tab completes, ↑ recalls history across sessions, questions are asked inline, `exit` or Ctrl+D leaves.
+- Autocomplete that knows every command: subcommands after `client`, `project` and `person`; the right clients for `rename`, `archive` and `unarchive`; refs that fit each command (`nudge` only offers what you're waiting on); keys and status values for `set`; and `owe`/`wait` guide you through who, when and where from. Shared by the browser terminal, the shell and zsh/bash completion.
+
 ## [0.2.0] - 2026-10-12
 
 ### Added

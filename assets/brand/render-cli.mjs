@@ -1,9 +1,10 @@
 // Renders the README screenshots into png/ (2x), using the real CLI and browser terminal:
-//   keel-cli-welcome.png  the `keel` welcome screen, dark theme
+//   keel-cli-welcome.png  the Keel shell (`keel`) opening on today, dark theme
 //   keel-browser.png      `keel serve` showing `today` with sample data, light theme
 // Usage, from the repo root after `pnpm build` (needs Google Chrome):
 //   node assets/brand/render-cli.mjs
 // Everything runs against a throwaway database with fictional clients (Acme, Northwind).
+// macOS only: the shell runs in a pseudo-terminal through `script`.
 import { execFileSync, spawn } from 'node:child_process';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -76,24 +77,20 @@ async function waitForServer() {
   throw new Error('keel serve did not start');
 }
 
+/** Opens the Keel shell in a pseudo-terminal, waits for it to draw, then presses Ctrl+D. */
+function shellSession() {
+  // A shell pipe, because macOS `script` rejects Node's socket-based pipes.
+  const out = execFileSync('sh', ['-c', "(sleep 3; printf '\\004') | script -q /dev/null pnpm -s keel"], { encoding: 'utf8', env });
+  return out
+    .replace(/\r/g, '')
+    .replace(/\x1b\[[0-9;]*[A-LN-Za-ln-z]/g, '') // cursor moves; keep colors (m)
+    .replace(/(\s|\^D|\x1b\[[0-9;]*m)*Bye\..*$/s, '') // Ctrl+D and the goodbye
+    .replace(/\s+$/, '');
+}
+
 let server;
 try {
-  // 1. CLI welcome screen
-  const page = `<!doctype html><meta charset="utf-8"><style>
-    html, body { margin: 0; background: transparent; }
-    .window { display: inline-block; margin: 24px; background: #0B1220; border-radius: 12px; overflow: hidden;
-      box-shadow: 0 0 0 1px #1E293B, 0 14px 30px rgba(0,0,0,.30); }
-    .bar { height: 34px; display: flex; align-items: center; gap: 8px; padding: 0 14px; background: #111A2E; border-bottom: 1px solid #1E293B; }
-    .dot { width: 12px; height: 12px; border-radius: 50%; }
-    .title { flex: 1; text-align: center; margin-right: 52px; color: #94A3B8; font: 12px Menlo, monospace; }
-    pre { margin: 0; padding: 18px 28px 20px 22px; color: #E2E8F0; font: 14px/1.35 Menlo, monospace; }
-    .prompt { color: #5EEAD4; }
-  </style><div class="window"><div class="bar"><span class="dot" style="background:#FF5F57"></span><span class="dot" style="background:#FEBC2E"></span><span class="dot" style="background:#28C840"></span><span class="title">keel</span></div><pre><span class="prompt">$</span> keel\n${ansiToHtml(keel())}</pre></div>`;
-  const file = join(scratch, 'cli.html');
-  writeFileSync(file, page);
-  screenshot(`file://${file}`, png('keel-cli-welcome.png'), 696, 470, ['--default-background-color=00000000']);
-
-  // 2. Browser terminal with a believable day
+  // Sample data shared by both screenshots.
   for (const line of [
     ['client', 'new', 'acme', 'Acme Corp'],
     ['client', 'new', 'northwind', 'Northwind'],
@@ -106,6 +103,28 @@ try {
     ['wait', 'API', 'keys', '@tom', 'due:today', '+northwind/portal'],
     ['in', 'ask', 'about', 'the', 'phase', '2', 'budget'],
     ['focus', 'c1', 'c2'],
+  ]) {
+    keel(...line);
+  }
+
+  // 1. The Keel shell
+  const page = `<!doctype html><meta charset="utf-8"><style>
+    html, body { margin: 0; background: transparent; }
+    .window { display: inline-block; margin: 24px; background: #0B1220; border-radius: 12px; overflow: hidden;
+      box-shadow: 0 0 0 1px #1E293B, 0 14px 30px rgba(0,0,0,.30); }
+    .bar { height: 34px; display: flex; align-items: center; gap: 8px; padding: 0 14px; background: #111A2E; border-bottom: 1px solid #1E293B; }
+    .dot { width: 12px; height: 12px; border-radius: 50%; }
+    .title { flex: 1; text-align: center; margin-right: 52px; color: #94A3B8; font: 12px Menlo, monospace; }
+    pre { margin: 0; padding: 18px 28px 20px 22px; color: #E2E8F0; font: 14px/1.35 Menlo, monospace; }
+    .prompt { color: #5EEAD4; }
+    .cursor { background: #94A3B8; }
+  </style><div class="window"><div class="bar"><span class="dot" style="background:#FF5F57"></span><span class="dot" style="background:#FEBC2E"></span><span class="dot" style="background:#28C840"></span><span class="title">keel</span></div><pre><span class="prompt">$</span> keel\n${ansiToHtml(shellSession())} <span class="cursor"> </span></pre></div>`;
+  const file = join(scratch, 'cli.html');
+  writeFileSync(file, page);
+  screenshot(`file://${file}`, png('keel-cli-welcome.png'), 696, 812, ['--default-background-color=00000000']);
+
+  // 2. Browser terminal, light theme
+  for (const line of [
     ['theme', 'light'],
   ]) {
     keel(...line);

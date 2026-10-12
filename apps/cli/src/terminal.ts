@@ -110,7 +110,24 @@ const WORD = [
   '',
 ];
 
-export function banner(paint: Paint, version: string, dbLabel: string): string {
+const COMMAND_TIPS = [
+  ['keel', 'open the Keel shell'],
+  ['keel today', 'what matters now'],
+  ['keel owe ...', 'promise something'],
+  ['keel serve', 'open the browser terminal'],
+  ['keel help', 'everything else'],
+];
+
+const SHELL_TIPS = [
+  ['today', 'what matters now'],
+  ['owe ...', 'promise something'],
+  ['switch ...', 'change project'],
+  ['help', 'everything else'],
+  ['exit', 'leave (or Ctrl+D)'],
+  ['', 'Tab completes · ↑ history · Ctrl+C cancels'],
+];
+
+export function banner(paint: Paint, version: string, dbLabel: string, opts: { shell?: boolean } = {}): string {
   const rows = MARK.map((m, i) => {
     const mark = i === 3 ? paint(m, { tone: 'accent' }) : m;
     const word = i === 6 ? paint('steady focus · kept promises · sound decisions', { tone: 'muted' }) : (WORD[i] ?? '');
@@ -122,11 +139,7 @@ export function banner(paint: Paint, version: string, dbLabel: string): string {
     '',
     `  ${paint(`v${version} · ${dbLabel}`, { tone: 'muted' })}`,
     '',
-    `  ${paint('keel today', { tone: 'accent' })}       ${paint('what matters now', { tone: 'muted' })}`,
-    `  ${paint('keel owe ...', { tone: 'accent' })}     ${paint('promise something', { tone: 'muted' })}`,
-    `  ${paint('keel switch ...', { tone: 'accent' })}  ${paint('change project', { tone: 'muted' })}`,
-    `  ${paint('keel serve', { tone: 'accent' })}       ${paint('open the browser terminal', { tone: 'muted' })}`,
-    `  ${paint('keel help', { tone: 'accent' })}        ${paint('everything else', { tone: 'muted' })}`,
+    ...(opts.shell ? SHELL_TIPS : COMMAND_TIPS).map(([cmd, what]) => `  ${paint(cmd!.padEnd(17), { tone: 'accent' })}${paint(what!, { tone: 'muted' })}`),
     '',
   ].join('\n');
 }
