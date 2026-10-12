@@ -193,6 +193,23 @@ Open a new terminal. Tab now completes commands, `@people`, `+projects`, refs (w
 - Add `--json` to any command for output that scripts can read.
 - Colors: `keel theme light`, `keel theme dark` or `keel theme auto` (the default, which asks your terminal).
 
+## Fixing and tidying up
+
+```sh
+keel client rename acme "Acme Inc"          # display name
+keel client rename acme slug:acme-inc       # the short name; paths become acme-inc/...
+keel set p1 title:"Website v2" slug:site    # a project's name and slug
+keel client archive acme                    # finished with a client: hide it, keep everything
+keel client unarchive acme                  # bring it back
+keel project delete p3                      # delete a project and its commitments
+keel client delete acme                     # delete a client with all its projects
+keel people                                 # everyone you've mentioned with @
+keel person rename @ravi "Ravi Kumar"       # show a full name
+keel person merge @rav @ravi                # fix a typo'd handle: move everything to @ravi
+```
+
+Deleting always shows what goes with it and asks you to type the name to confirm. Deleted items disappear from Keel, but your daily backups from before still have them.
+
 ## Cheat sheet
 
 | Command | Does |
@@ -211,6 +228,8 @@ Open a new terminal. Tab now completes commands, `@people`, `+projects`, refs (w
 | `triage` | Sort the inbox |
 | `review` · `summary` | Friday review · kept rate and time |
 | `client new` · `project new` · `projects` | Set up and list |
+| `client rename\|archive\|delete` · `project delete` | Tidy up |
+| `people` · `person rename\|merge` | People and their names |
 | `serve` | Browser terminal |
 | `help` | Everything else |
 

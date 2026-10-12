@@ -4,6 +4,20 @@ All notable changes to Keel. The format follows [Keep a Changelog](https://keepa
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-10-12
+
+### Added
+
+- `client rename`, `client archive` / `unarchive` and `client delete`. Archived clients and their projects are hidden from lists (`clients --all` and `projects --all` show them); their open commitments stay visible until closed.
+- `project delete`, and `set p7 slug:<new>` to change a project's slug.
+- `people`, `person rename @ravi "Ravi Kumar"` and `person merge @rav @ravi`.
+- Deleting shows what goes with it and asks you to type the name to confirm. `--yes` skips the question for scripts; `--json` without `--yes` never deletes. Deletes are soft, so backups from before still hold everything.
+- Screenshots of the CLI and the browser terminal in the READMEs.
+
+### Changed
+
+- Output says "working on acme/website" instead of "context", and `today` on an empty database shows the first two commands to run.
+
 ## [0.1.0] - 2026-10-12
 
 The first release: one command language in your terminal and in the browser.
@@ -23,5 +37,6 @@ The first release: one command language in your terminal and in the browser.
 - Shell completion for zsh and bash: `keel completion zsh|bash`.
 - Storage on libSQL: a local SQLite file by default, ready for a libSQL server or Turso later. CI runs the core tests on a file and on a libSQL server.
 
-[Unreleased]: https://github.com/upadhyayprakash/keel/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/upadhyayprakash/keel/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/upadhyayprakash/keel/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/upadhyayprakash/keel/releases/tag/v0.1.0

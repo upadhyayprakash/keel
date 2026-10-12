@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm';
+import { and, eq, isNull } from 'drizzle-orm';
 import { data, hint, ok, s, warn, type Block } from '../blocks';
 import { formatDay, parseDue } from '../dates';
 import * as t from '../db/schema';
@@ -96,7 +96,7 @@ export const nudge: Command = {
 
 export const set: Command = {
   name: 'set',
-  usage: 'set <c42|p7> [title:"..."] [due:<when>] [@who] [+client/project] [status:<status>]',
+  usage: 'set <c42|p7> [title:"..."] [due:<when>] [@who] [+client/project] [status:<status>] [slug:<new-slug>]',
   summary: 'Edit fields of a commitment or project',
   async run(k, p) {
     const ref = refArg(p, ['c', 'p'], 'Example: set c42 due:fri, set p7 status:paused');
@@ -113,6 +113,16 @@ export const set: Command = {
         changes.status = p.kv.status as (typeof PROJECT_STATUSES)[number];
       }
       if (p.kv.title) changes.name = p.kv.title;
+      if (p.kv.slug !== undefined) {
+        const slug = p.kv.slug.toLowerCase();
+        if (!/^[a-z0-9][a-z0-9-]*$/.test(slug)) throw new KeelError(`"${slug}" can't be a slug.`, 'Use lowercase letters, numbers and dashes.');
+        const taken = await k.db
+          .select({ id: t.projects.id })
+          .from(t.projects)
+          .where(and(eq(t.projects.clientId, pv.client.id), eq(t.projects.slug, slug), isNull(t.projects.deletedAt)));
+        if (taken.some((x) => x.id !== pv.project.id)) throw new KeelError(`Project ${pv.client.slug}/${slug} already exists.`);
+        changes.slug = slug;
+      }
       if (Object.keys(changes).length === 0) throw new KeelError('Nothing to change.', 'Example: set p7 status:paused');
       await k.batch([
         k.db.update(t.projects).set({ ...changes, updatedAt: at }).where(eq(t.projects.id, pv.project.id)),

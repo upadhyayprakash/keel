@@ -77,7 +77,7 @@ The browser terminal accepts **exactly the same commands as the CLI**; the `keel
 | `keel focus c42 c51 c60` | Set today's top 3 |
 | `keel ls [owe\|wait\|inbox\|overdue] [+client] [@who]` | List with filters |
 | `keel show <ref>` | Details and history of one item |
-| `keel set <ref> key:value ...` | Edit fields: `status:`, `due:`, `@`, `+`, `title:` |
+| `keel set <ref> key:value ...` | Edit fields: `status:`, `due:`, `@`, `+`, `title:`, and `slug:` for a project |
 | `keel done <ref>` / `keel drop <ref>` | Close a commitment |
 | `keel renegotiate <ref> due:<when>` | Move a due date and record that it was renegotiated (counts differently from a silent slip) |
 | `keel nudge <ref>` | Mark a waiting-on item as followed up, with a timestamp |
@@ -85,7 +85,12 @@ The browser terminal accepts **exactly the same commands as the CLI**; the `keel
 | `keel switch <project>` | Change context (see section 2) |
 | `keel park` | Write the resume note for the current project and leave it |
 | `keel client new <slug> "<name>"` | New client |
+| `keel client rename <slug> ["<name>"] [slug:<new>]` | Rename a client, or change its slug (its projects' paths follow) |
+| `keel client archive\|unarchive <slug>` | Hide a finished client and its projects from lists, keeping everything |
+| `keel client delete <slug>` | Delete a client with its projects, commitments, resume notes and inbox items. Asks you to type the slug (`--yes` for scripts). Soft delete: backups keep a copy |
 | `keel project new <client/slug> "<name>"` | New project |
+| `keel project delete <p7\|client/slug>` | Delete a project and what belongs to it, after the same confirmation |
+| `keel people`, `keel person rename @ravi "Ravi Kumar"`, `keel person merge @rav @ravi` | List people, set a display name, fold a duplicate handle into another |
 | `keel review` | Guided weekly review |
 | `keel summary [day\|week] [+client]` | Summary: done, slipped, renegotiated, waiting, time per client |
 | `keel theme [light\|dark\|auto]` | Pick the color theme (see section 4) |

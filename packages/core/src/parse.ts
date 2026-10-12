@@ -7,7 +7,7 @@ export interface Token {
   quoted: boolean;
 }
 
-export const KV_KEYS = ['due', 'from', 'status', 'title', 'where', 'next', 'unsure', 'theme'] as const;
+export const KV_KEYS = ['due', 'from', 'status', 'title', 'where', 'next', 'unsure', 'theme', 'slug'] as const;
 export type KvKey = (typeof KV_KEYS)[number];
 
 export interface Parsed {

@@ -1,124 +1,13 @@
-import { and, eq, isNull } from 'drizzle-orm';
-import { blank, data, heading, hint, line, ok, s, table, warn, type Block } from '../blocks';
+import { eq } from 'drizzle-orm';
+import { blank, data, heading, line, ok, s, table, warn, type Block } from '../blocks';
 import { dayDiff } from '../dates';
 import * as t from '../db/schema';
 import { KeelError } from '../errors';
-import { CLIENT_HUES } from '../palettes';
+
 import type { Parsed } from '../parse';
 import type { ProjectView, Store } from '../store';
 import { commitmentData, commitmentRow, noteData, projectData, projectSpan, type Command, type Flow } from './shared';
 import { noteBlock } from './views';
-
-const SLUG = /^[a-z0-9][a-z0-9-]*$/;
-
-export const client: Command = {
-  name: 'client',
-  usage: 'client new <slug> "<Name>" | client ls',
-  summary: 'Add or list clients',
-  async run(k, p) {
-    const sub = p.words[0] ?? 'ls';
-    if (sub === 'ls') return listClients(k);
-    if (sub !== 'new') throw new KeelError(`Unknown "client ${sub}".`, 'Try: client new acme "Acme Corp", or client ls');
-
-    const slug = (p.words[1] ?? '').toLowerCase();
-    if (!SLUG.test(slug)) throw new KeelError('Give the client a short slug.', 'Example: client new acme "Acme Corp"');
-    const name = p.words.slice(2).join(' ').trim() || slug;
-    if (await k.clientBySlug(slug)) throw new KeelError(`Client ${slug} already exists.`);
-
-    const count = (await k.listClients()).length;
-    const color = CLIENT_HUES[count % CLIENT_HUES.length]!;
-    const id = k.newId();
-    await k.batch([
-      k.db.insert(t.clients).values({ id, ...k.stamps(), slug, name, color }),
-      k.event('client', id, 'created'),
-    ]);
-    return [
-      ok([s('client '), s(slug, color, { bold: true }), s(` created · ${name}`)]),
-      hint(`Next: project new ${slug}/<project> "Name"`),
-      data({ id, slug, name }),
-    ];
-  },
-};
-
-async function listClients(k: Store): Promise<Block[]> {
-  const clients = await k.listClients();
-  if (clients.length === 0) return [hint('No clients yet. Add one: client new acme "Acme Corp"'), data({ clients: [] })];
-  const projects = await k.listProjects();
-  const count = (id: string) => projects.filter((pv) => pv.client.id === id).length;
-  return [
-    heading(`CLIENTS · ${clients.length}`),
-    table(
-      clients.map((c) => [
-        s(c.slug, c.color as Parameters<typeof s>[1], { bold: true }),
-        s(c.name),
-        s(`${count(c.id)} projects`, 'muted'),
-      ]),
-    ),
-    data({ clients: clients.map((c) => ({ id: c.id, slug: c.slug, name: c.name, projects: count(c.id) })) }),
-  ];
-}
-
-export const project: Command = {
-  name: 'project',
-  usage: 'project new <client/slug> "<Name>" | project ls',
-  summary: 'Add or list projects',
-  async run(k, p) {
-    const sub = p.words[0] ?? 'ls';
-    if (sub === 'ls') return listProjects(k);
-    if (sub !== 'new') throw new KeelError(`Unknown "project ${sub}".`, 'Try: project new acme/website "Website rebuild", or project ls');
-
-    const path = (p.words[1] ?? p.projects[0] ?? '').toLowerCase();
-    const [clientSlug, slug] = path.split('/');
-    if (!clientSlug || !slug || !SLUG.test(slug)) {
-      throw new KeelError('Name it client/project.', 'Example: project new acme/website "Website rebuild"');
-    }
-    const owner = await k.clientBySlug(clientSlug);
-    if (!owner) throw new KeelError(`No client ${clientSlug}.`, `Create it first: client new ${clientSlug} "Name"`);
-    const exists = await k.db
-      .select()
-      .from(t.projects)
-      .where(and(eq(t.projects.clientId, owner.id), eq(t.projects.slug, slug), isNull(t.projects.deletedAt)));
-    if (exists[0]) throw new KeelError(`Project ${path} already exists.`);
-
-    const name = p.words.slice(2).join(' ').trim() || slug;
-    const id = k.newId();
-    const refNo = await k.nextRef(t.projects);
-    const hadContext = Boolean(await k.getSetting('context'));
-    const queries = [
-      k.db.insert(t.projects).values({ id, ...k.stamps(), refNo, clientId: owner.id, slug, name, lastTouchedAt: k.iso() }),
-      k.event('project', id, 'created'),
-    ];
-    if (!hadContext) {
-      queries.push(k.setSetting('context', id), k.db.insert(t.contextLog).values({ id: k.newId(), ...k.stamps(), projectId: id, startedAt: k.iso() }));
-    }
-    await k.batch(queries);
-    const view = { path: `${clientSlug}/${slug}`, hue: owner.color as ProjectView['hue'], project: { refNo } as ProjectView['project'] };
-    return [
-      ok([s(`p${refNo}`, 'default', { bold: true, ref: `p${refNo}` }), s(' '), projectSpan(view), s(` created · ${name}`)]),
-      hint(hadContext ? `Work on it with: switch ${view.path}` : `You are now working on ${view.path}. New items land here.`),
-      data(projectData((await k.projectByRef(refNo))!)),
-    ];
-  },
-};
-
-async function listProjects(k: Store): Promise<Block[]> {
-  const projects = await k.listProjects();
-  if (projects.length === 0) return [hint('No projects yet. Add one: project new acme/website "Website rebuild"'), data({ projects: [] })];
-  const ctx = await k.getSetting('context');
-  return [
-    heading(`PROJECTS · ${projects.length}`),
-    table(
-      projects.map((pv) => [
-        s(pv.project.id === ctx ? '●' : ' ', pv.hue),
-        s(`p${pv.project.refNo}`, 'muted', { ref: `p${pv.project.refNo}` }),
-        projectSpan(pv),
-        s(pv.project.name),
-        s(pv.project.status, pv.project.status === 'active' ? 'muted' : 'today'),
-      ]),
-    ),
-    data({ projects: projects.map((pv) => ({ ...projectData(pv), current: pv.project.id === ctx })) }),
-  ];
-}
 
 export interface NoteFields {
   whereIAm: string | null;

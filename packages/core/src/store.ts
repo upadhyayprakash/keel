@@ -98,6 +98,23 @@ export class Store {
 
   // ---- clients and projects ----
 
+  /** Like clientBySlug, but a missing client is an error. */
+  async requireClient(slug: string | undefined, usage: string): Promise<Client> {
+    if (!slug) throw new KeelError('Which client?', usage);
+    const found = await this.clientBySlug(slug.replace(/^\+/, '').toLowerCase());
+    if (!found) throw new KeelError(`No client ${slug}.`, 'List them with: clients --all');
+    return found;
+  }
+
+  async personByHandle(handle: string) {
+    const rows = await this.db
+      .select()
+      .from(t.people)
+      .where(and(eq(t.people.handle, handle.replace(/^@/, '').toLowerCase()), isNull(t.people.deletedAt)));
+    if (!rows[0]) throw new KeelError(`No person @${handle.replace(/^@/, '')}.`, 'List them with: people');
+    return rows[0];
+  }
+
   async clientBySlug(slug: string): Promise<Client | null> {
     const rows = await this.db
       .select()
@@ -106,16 +123,21 @@ export class Store {
     return rows[0] ?? null;
   }
 
-  async listClients(): Promise<Client[]> {
-    return this.db.select().from(t.clients).where(isNull(t.clients.deletedAt)).orderBy(asc(t.clients.slug));
+  /** Archived clients (and their projects) are hidden unless asked for. */
+  async listClients(includeArchived = false): Promise<Client[]> {
+    return this.db
+      .select()
+      .from(t.clients)
+      .where(and(isNull(t.clients.deletedAt), includeArchived ? undefined : isNull(t.clients.archivedAt)))
+      .orderBy(asc(t.clients.slug));
   }
 
-  private async projectViews(where: SQL[]): Promise<ProjectView[]> {
+  private async projectViews(where: SQL[], includeArchived = false): Promise<ProjectView[]> {
     const rows = await this.db
       .select({ project: t.projects, client: t.clients })
       .from(t.projects)
       .innerJoin(t.clients, eq(t.projects.clientId, t.clients.id))
-      .where(and(isNull(t.projects.deletedAt), ...where))
+      .where(and(isNull(t.projects.deletedAt), isNull(t.clients.deletedAt), includeArchived ? undefined : isNull(t.clients.archivedAt), ...where))
       .orderBy(asc(t.clients.slug), asc(t.projects.slug));
     return rows.map((r) => ({
       ...r,
@@ -124,8 +146,8 @@ export class Store {
     }));
   }
 
-  listProjects(): Promise<ProjectView[]> {
-    return this.projectViews([]);
+  listProjects(includeArchived = false): Promise<ProjectView[]> {
+    return this.projectViews([], includeArchived);
   }
 
   async projectById(id: string): Promise<ProjectView | null> {
@@ -141,9 +163,12 @@ export class Store {
     if (!clientSlug || !projectSlug) {
       throw new KeelError(`"${path}" is a client, not a project.`, 'Use client/project, for example acme/website.');
     }
-    const found = await this.projectViews([eq(t.clients.slug, clientSlug), eq(t.projects.slug, projectSlug)]);
+    const found = await this.projectViews([eq(t.clients.slug, clientSlug), eq(t.projects.slug, projectSlug)], true);
     if (!found[0]) {
       throw new KeelError(`No project ${clientSlug}/${projectSlug}.`, `Create it: project new ${clientSlug}/${projectSlug} "Name"`);
+    }
+    if (found[0].client.archivedAt) {
+      throw new KeelError(`${clientSlug} is archived.`, `Bring it back first: client unarchive ${clientSlug}`);
     }
     return found[0];
   }
