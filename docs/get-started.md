@@ -1,5 +1,7 @@
 # Get started with Keel
 
+> The same guide, split into pages and kept up to date, is on the docs site: **https://nouisi-keel.mintlify.site**.
+
 Keel keeps three things in one place: the promises you make and the ones made to you, the few things that matter today, and where you left each project. You use it by typing short commands, in your terminal or in the browser.
 
 This guide takes about ten minutes, from install to your first Friday review.

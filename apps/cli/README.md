@@ -39,7 +39,7 @@ keel today
 - `keel` on its own opens the Keel shell: type commands without the prefix, with Tab completion and history.
 - `keel help` lists everything.
 
-The [Get started guide](https://github.com/upadhyayprakash/keel/blob/main/docs/get-started.md) explains clients, projects and the project you're working on, and walks through a normal day, a meeting and the Friday review.
+The [docs](https://nouisi-keel.mintlify.site) explain clients, projects and the project you're working on, and walks through a normal day, a meeting and the Friday review.
 
 ## Your data
 
@@ -62,4 +62,7 @@ echo 'eval "$(keel completion bash)"' >> ~/.bashrc   # bash
 
 ## More
 
-Source, docs and issues: https://github.com/upadhyayprakash/keel. MIT licensed.
+- Docs: https://nouisi-keel.mintlify.site
+- Source and issues: https://github.com/upadhyayprakash/keel
+
+MIT licensed.

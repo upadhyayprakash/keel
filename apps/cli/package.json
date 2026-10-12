@@ -1,11 +1,11 @@
 {
   "name": "@nouisi/keel",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Keep your promises, priorities and project context in one terminal. CLI plus a browser terminal, local-first.",
   "type": "module",
   "license": "MIT",
   "author": "Prakash Upadhyay",
-  "homepage": "https://github.com/upadhyayprakash/keel#readme",
+  "homepage": "https://nouisi-keel.mintlify.site",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/upadhyayprakash/keel.git",

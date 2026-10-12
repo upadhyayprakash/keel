@@ -139,15 +139,41 @@ function removeSyncCopy(home: string): void {
   for (const name of SYNC_FILES) rmSync(join(home, name), { force: true });
 }
 
+/**
+ * "keel-you-aws-ap-south-1.turso.io" is an easy typo for "keel-you.aws-ap-south-1.turso.io":
+ * Turso addresses are <database>-<account>.<region>.turso.io.
+ */
+export function suggestTursoHost(host: string): string | null {
+  const m = /^(.+)-((?:aws|gcp|fly)-[a-z0-9-]+)\.turso\.io$/.exec(host);
+  return m ? `${m[1]}.${m[2]}.turso.io` : null;
+}
+
+/** The useful part of a database error: the library wraps the server's answer in `cause`. */
+function errorText(e: unknown): string {
+  const cause = (e as { cause?: unknown })?.cause;
+  const parts = [e instanceof Error ? e.message : String(e), cause instanceof Error ? cause.message : cause ? String(cause) : ''];
+  return parts.join(' ');
+}
+
 async function openChecked(opts: KeelOptions, host: string): Promise<Keel> {
   try {
     return await Keel.open(opts);
   } catch (e) {
     if (e instanceof KeelError) throw e;
     if (isConnectionError(e)) throw new KeelError(`Can't reach ${host}.`, 'Check the address and your connection.');
-    const text = e instanceof Error ? e.message : String(e);
-    if (/401|403|unauthori[sz]ed|forbidden|token/i.test(text)) throw new KeelError(`${host} refused the token.`, 'Create a new token for this database and try again.');
-    throw e;
+    const text = errorText(e);
+    if (/HTTP status 404|not found/i.test(text)) {
+      const guess = suggestTursoHost(host);
+      throw new KeelError(
+        `There's no database at ${host}.`,
+        guess ? `Did you mean libsql://${guess} ? (a dot before the region, not a dash)` : 'Check the address: turso db show <database> --url prints it.',
+      );
+    }
+    if (/HTTP status (400|401|403)|unauthori[sz]ed|forbidden|token/i.test(text)) {
+      throw new KeelError(`${host} refused the token.`, 'Create a new one with turso db tokens create <database>, and paste all of it.');
+    }
+    const detail = text.split('\n').map((l) => l.trim()).filter(Boolean).pop() ?? 'unknown error';
+    throw new KeelError(`${host} answered with an error: ${detail}`);
   }
 }
 

@@ -4,6 +4,17 @@ All notable changes to Keel. The format follows [Keep a Changelog](https://keepa
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-10-13
+
+### Fixed
+
+- `keel db connect` explains a wrong address ("There's no database at ...") and suggests the fix for the common Turso typo of a dash before the region instead of a dot. A rejected token says so, instead of printing a raw database error.
+- `done`'s usage no longer claims it takes inbox refs; only `drop` does.
+
+### Changed
+
+- Docs are on [nouisi-keel.mintlify.site](https://nouisi-keel.mintlify.site), linked from the READMEs and the npm page.
+
 ## [0.3.0] - 2026-10-13
 
 ### Added
@@ -52,7 +63,8 @@ The first release: one command language in your terminal and in the browser.
 - Shell completion for zsh and bash: `keel completion zsh|bash`.
 - Storage on libSQL: a local SQLite file by default, ready for a libSQL server or Turso later. CI runs the core tests on a file and on a libSQL server.
 
-[Unreleased]: https://github.com/upadhyayprakash/keel/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/upadhyayprakash/keel/compare/v0.3.1...HEAD
+[0.3.1]: https://github.com/upadhyayprakash/keel/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/upadhyayprakash/keel/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/upadhyayprakash/keel/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/upadhyayprakash/keel/releases/tag/v0.1.0

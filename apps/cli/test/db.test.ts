@@ -65,3 +65,12 @@ describe('keel db connect', () => {
     expect(await storageOptions(home, fileEnv)).toEqual({ url: `file:${join(home, 'keel.db')}` });
   });
 });
+
+describe('Turso address typos', () => {
+  it('suggests the dot before the region', async () => {
+    const { suggestTursoHost } = await import('../src/db');
+    expect(suggestTursoHost('keel-you-aws-ap-south-1.turso.io')).toBe('keel-you.aws-ap-south-1.turso.io');
+    expect(suggestTursoHost('keel-you.aws-ap-south-1.turso.io')).toBeNull();
+    expect(suggestTursoHost('127.0.0.1:8080')).toBeNull();
+  });
+});

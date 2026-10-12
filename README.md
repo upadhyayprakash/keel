@@ -8,6 +8,7 @@
 <p align="center">
   <a href="https://github.com/upadhyayprakash/keel/actions/workflows/ci.yml"><img src="https://github.com/upadhyayprakash/keel/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="MIT license"></a>
+  <a href="https://nouisi-keel.mintlify.site"><img src="https://img.shields.io/badge/docs-nouisi--keel.mintlify.site-C2410C.svg" alt="Docs"></a>
 </p>
 
 # Keel
@@ -85,6 +86,8 @@ pnpm build          # browser terminal, then the npm bundle in apps/cli/dist
 | `apps/web` | The browser terminal |
 
 ## Docs
+
+**User docs: [nouisi-keel.mintlify.site](https://nouisi-keel.mintlify.site)** (install, guides, every command).
 
 - [Get started](docs/get-started.md): install, the ideas behind Keel, and the commands you'll use daily
 - [Docs site source](docs-site/) (Mintlify): `pnpm docs:dev` to preview; `pnpm docs:generate` after changing commands or the changelog
