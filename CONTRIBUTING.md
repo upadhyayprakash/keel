@@ -28,7 +28,8 @@ Plain, short sentences. No em dashes: use a period, comma, colon or parentheses 
 1. Move the Unreleased notes in `CHANGELOG.md` under a new version heading and add its compare link.
 2. Bump `version` in `apps/cli/package.json` and `VERSION` in `packages/core/src/version.ts` (a test checks they match).
 3. Commit, then tag and push: `git tag v0.2.0 && git push origin main v0.2.0`.
-4. The Release workflow checks, builds, publishes `@nouisi/keel` to npm through trusted publishing (no token), and creates the GitHub release with the changelog notes.
+4. The Release workflow checks, builds, stages `@nouisi/keel` on npm through trusted publishing (no token), and creates the GitHub release with the changelog notes.
+5. Approve the staged version on npmjs.com (it asks for your 2FA code). Until then nobody can install it.
 
 ## License
 
