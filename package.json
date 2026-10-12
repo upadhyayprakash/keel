@@ -1,0 +1,26 @@
+{
+  "name": "keel-monorepo",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Keel: promises, priorities and project context, in the terminal and the browser.",
+  "license": "MIT",
+  "type": "module",
+  "packageManager": "pnpm@9.15.9",
+  "engines": {
+    "node": ">=20.19"
+  },
+  "scripts": {
+    "keel": "tsx apps/cli/src/main.ts",
+    "dev:server": "KEEL_DEV_ORIGIN=localhost:5173 tsx apps/cli/src/main.ts serve",
+    "dev:web": "pnpm --filter @keel/web dev",
+    "build": "pnpm --filter @keel/web build",
+    "test": "pnpm -r test",
+    "typecheck": "pnpm -r typecheck",
+    "db:generate": "pnpm --filter @keel/core db:generate"
+  },
+  "devDependencies": {
+    "@types/node": "^20.19.0",
+    "tsx": "^4.20.0",
+    "typescript": "^5.9.0"
+  }
+}

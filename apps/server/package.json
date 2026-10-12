@@ -1,0 +1,22 @@
+{
+  "name": "@keel/server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@hono/node-server": "^1.19.0",
+    "@keel/core": "workspace:*",
+    "hono": "^4.10.0"
+  },
+  "devDependencies": {
+    "vitest": "^3.2.0"
+  }
+}

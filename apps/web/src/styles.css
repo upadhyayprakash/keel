@@ -1,0 +1,245 @@
+/* Colors come from @keel/core palettes via CSS variables (see theme.ts). */
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--page);
+  color: var(--t-default);
+  font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 14px;
+}
+
+.app {
+  height: 100vh;
+  padding: 24px;
+  display: flex;
+}
+
+.window {
+  flex: 1;
+  max-width: 1400px;
+  min-width: 0;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.25);
+}
+
+.top {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 14px 22px;
+  border-bottom: 1px solid var(--line);
+}
+
+.wordmark {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.wordmark .chev {
+  color: var(--t-accent);
+  font-weight: 700;
+  font-size: 22px;
+}
+
+.wordmark .word {
+  font-family: 'Space Grotesk', system-ui, sans-serif;
+  font-weight: 700;
+  font-size: 22px;
+  letter-spacing: -0.02em;
+}
+
+.meta {
+  color: var(--t-muted);
+  font-size: 12px;
+}
+
+.scroll {
+  flex: 1;
+  overflow: auto;
+  padding: 18px 22px;
+  line-height: 1.6;
+}
+
+.entry {
+  margin-bottom: 16px;
+}
+
+.cmd .chev,
+.prompt-row .chev {
+  color: var(--t-accent);
+  font-weight: 700;
+}
+
+.heading {
+  font-weight: 700;
+}
+
+.blank {
+  height: 1.6em;
+}
+
+.ref {
+  background: none;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+.ref:hover,
+a:hover {
+  text-decoration: underline;
+}
+
+a {
+  text-decoration: none;
+}
+
+.tbl {
+  border-collapse: collapse;
+}
+
+.tbl td {
+  padding: 0 2ch 0 0;
+  white-space: pre;
+  vertical-align: top;
+}
+
+pre.raw {
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+.suggest {
+  margin: 0 22px 8px;
+  max-width: 760px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--panel);
+  overflow: hidden;
+  font-size: 13px;
+}
+
+.suggest .opt {
+  display: flex;
+  gap: 2ch;
+  padding: 6px 12px;
+  cursor: pointer;
+}
+
+.suggest .opt.sel {
+  background: var(--selection);
+}
+
+.suggest .ins {
+  color: var(--t-accent);
+  min-width: 22ch;
+}
+
+.suggest .detail {
+  color: var(--t-muted);
+  flex: 1;
+}
+
+.suggest .key {
+  color: var(--t-muted);
+}
+
+.suggest .preview {
+  padding: 8px 12px;
+}
+
+.suggest .opt + .preview {
+  border-top: 1px solid var(--line);
+}
+
+.prompt-row {
+  display: flex;
+  gap: 1ch;
+  align-items: center;
+  padding: 4px 22px 14px;
+}
+
+.prompt-row input {
+  flex: 1;
+  min-width: 0;
+  background: transparent;
+  border: 0;
+  outline: none;
+  color: var(--t-default);
+  font: inherit;
+  caret-color: var(--t-accent);
+}
+
+.prompt-row input::placeholder {
+  color: var(--t-dim);
+}
+
+.status {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: center;
+  padding: 6px 14px;
+  border-top: 1px solid var(--line);
+  background: var(--panel);
+  color: var(--t-muted);
+  font-size: 12px;
+}
+
+.toggle {
+  margin-left: auto;
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.toggle button {
+  height: 26px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--t-muted);
+  font: inherit;
+  cursor: pointer;
+}
+
+.toggle button[aria-pressed='true'] {
+  background: var(--t-accent);
+  color: var(--on-accent);
+  font-weight: 700;
+}
+
+:focus-visible {
+  outline: 2px solid var(--t-accent);
+  outline-offset: 2px;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
