@@ -1,13 +1,25 @@
-import { hint, ok, s } from '../blocks';
+import { hint, ok, s, type Span } from '../blocks';
 import { formatDay, parseDue } from '../dates';
 import * as t from '../db/schema';
 import { KeelError } from '../errors';
 import type { Parsed } from '../parse';
-import type { Store } from '../store';
-import { parseSource, projectSpan, type Command } from './shared';
+import type { ProjectView, Store } from '../store';
+import { parseSource, projectSpan, type Command, type Source } from './shared';
 
-/** Validates owe/wait input. Shared with the live preview in the browser. */
-export async function readCommitment(k: Store, p: Parsed, direction: 'owe' | 'wait') {
+export type Direction = 'owe' | 'wait';
+
+export interface CommitmentInput {
+  title: string;
+  handle: string;
+  dueOn: string;
+  project: ProjectView | null;
+  source: Source;
+  sourceRef: string | null;
+  tags: string[];
+}
+
+/** Validates owe/wait input. Shared by owe, wait, meeting, triage and the live preview. */
+export async function readCommitment(k: Store, p: Parsed, direction: Direction): Promise<CommitmentInput> {
   const title = p.words.join(' ').trim();
   const example = `${direction} send pricing deck @ravi due:thu`;
   if (!title) throw new KeelError('What is the promise?', `Example: ${example}`);
@@ -18,45 +30,72 @@ export async function readCommitment(k: Store, p: Parsed, direction: 'owe' | 'wa
   if (!dueOn) throw new KeelError(`Can't read the date "${p.kv.due}".`, 'Examples: due:thu, due:tomorrow, due:+3d, due:2026-10-20');
   const project = await k.projectFromArgs(p);
   const { source, sourceRef } = parseSource(p.kv.from);
-  return { title, handle: p.people[0]!, dueOn, project, source, sourceRef };
+  return { title, handle: p.people[0]!, dueOn, project, source, sourceRef, tags: p.tags };
 }
 
-function commitmentCommand(direction: 'owe' | 'wait'): Command {
+type PersonCache = Map<string, { id: string; name: string }>;
+
+/**
+ * Builds the queries that create one commitment. Pass the same `people` cache when
+ * creating several in one batch, so a new person is only inserted once.
+ */
+export async function commitmentQueries(
+  k: Store,
+  input: CommitmentInput,
+  direction: Direction,
+  refNo: number,
+  people: PersonCache = new Map(),
+  overrides: { source?: Source } = {},
+) {
+  const queries = [];
+  let person = people.get(input.handle);
+  if (!person) {
+    const found = await k.person(input.handle);
+    queries.push(...found.queries);
+    person = { id: found.id, name: found.name };
+    people.set(input.handle, person);
+  }
+  const id = k.newId();
+  const source = overrides.source ?? input.source;
+  queries.push(
+    k.db.insert(t.commitments).values({
+      id,
+      ...k.stamps(),
+      refNo,
+      direction,
+      title: input.title,
+      personId: person.id,
+      projectId: input.project?.project.id ?? null,
+      dueOn: input.dueOn,
+      source,
+      sourceRef: input.sourceRef,
+      tags: input.tags.length ? input.tags.join(' ') : null,
+    }),
+    k.event('commitment', id, 'created', { direction, dueOn: input.dueOn, source }),
+  );
+  return { queries, personName: person.name, ref: `c${refNo}` };
+}
+
+/** "c12 I owe Ravi · Thu 15 Oct · acme/website" */
+export function createdLine(ref: string, direction: Direction, personName: string, input: CommitmentInput): Span[] {
+  return [
+    s(ref, 'default', { bold: true, ref }),
+    s(direction === 'owe' ? ` I owe ${personName}` : ` waiting on ${personName}`),
+    s(` · ${formatDay(input.dueOn)}`),
+    ...(input.project ? [s(' · '), projectSpan(input.project)] : [s(' · no project', 'dim')]),
+  ];
+}
+
+function commitmentCommand(direction: Direction): Command {
   return {
     name: direction,
     usage: `${direction} <what> @who due:<when> [+client/project] [from:meeting|slack:<link>] [#tag]`,
     summary: direction === 'owe' ? 'New "I owe" commitment' : 'New "waiting on" commitment',
     async run(k, p) {
       const input = await readCommitment(k, p, direction);
-      const person = await k.person(input.handle);
-      const id = k.newId();
-      const refNo = await k.nextRef(t.commitments);
-      await k.batch([
-        ...person.queries,
-        k.db.insert(t.commitments).values({
-          id,
-          ...k.stamps(),
-          refNo,
-          direction,
-          title: input.title,
-          personId: person.id,
-          projectId: input.project?.project.id ?? null,
-          dueOn: input.dueOn,
-          source: input.source,
-          sourceRef: input.sourceRef,
-          tags: p.tags.length ? p.tags.join(' ') : null,
-        }),
-        k.event('commitment', id, 'created', { direction, dueOn: input.dueOn }),
-      ]);
-      const ref = `c${refNo}`;
-      return [
-        ok([
-          s(ref, 'default', { bold: true, ref }),
-          s(direction === 'owe' ? ` I owe ${person.name}` : ` waiting on ${person.name}`),
-          s(` · ${formatDay(input.dueOn)}`),
-          ...(input.project ? [s(' · '), projectSpan(input.project)] : [s(' · no project', 'dim')]),
-        ]),
-      ];
+      const created = await commitmentQueries(k, input, direction, await k.nextRef(t.commitments));
+      await k.batch(created.queries);
+      return [ok(createdLine(created.ref, direction, created.personName, input))];
     },
   };
 }
@@ -85,7 +124,7 @@ export const inbox: Command = {
     const ref = `i${refNo}`;
     return [
       ok([s(ref, 'default', { bold: true, ref }), s(' added to inbox'), ...(project ? [s(' · '), projectSpan(project)] : [])]),
-      ...(refNo === 1 ? [hint('Sort it later with: ls inbox')] : []),
+      ...(refNo === 1 ? [hint('Sort it later with: triage')] : []),
     ];
   },
 };

@@ -158,7 +158,7 @@ export const focus: Command = {
   summary: "Pick today's top 3",
   async run(k, p) {
     const date = k.today();
-    if (p.words.length === 0) return todayCommand.run(k, p);
+    if (p.words.length === 0) return todayCommand.run!(k, p);
 
     const at = k.iso();
     const clear = p.words[0] === 'clear';

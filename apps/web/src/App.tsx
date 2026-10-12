@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from 'react';
-import type { Block, Completion, KeelState, ThemeSetting } from '@keel/core/ui';
-import { api } from './api';
+import type { Block, Completion, KeelState, Question, ThemeSetting } from '@keel/core/ui';
+import { api, type ApiResult } from './api';
 import { BlockView, SpanView } from './Blocks';
 import { applyTheme, resolve } from './theme';
 
@@ -13,6 +13,16 @@ interface Entry {
 const THEMES: ThemeSetting[] = ['light', 'dark', 'auto'];
 let nextId = 1;
 
+const unreachable: Block[] = [{ kind: 'status', level: 'error', spans: [{ text: "Can't reach keel serve. Is it still running?" }] }];
+
+/** Shows a given answer in the scrollback, like a terminal would. */
+function echo(question: Question, text: string | null): Block {
+  const answer = text === null ? { text: '(cancelled)', tone: 'dim' as const } : text ? { text } : { text: '(skipped)', tone: 'dim' as const };
+  return question.prompt === '›'
+    ? { kind: 'line', spans: [{ text: '› ', tone: 'accent' }, answer] }
+    : { kind: 'line', spans: [{ text: '│ ', tone: 'muted' }, { text: `${question.prompt} `, tone: 'accent', bold: true }, answer] };
+}
+
 export function App() {
   const [entries, setEntries] = useState<Entry[]>([]);
   const [input, setInput] = useState('');
@@ -24,6 +34,7 @@ export function App() {
   const [state, setState] = useState<KeelState | null>(null);
   const [theme, setTheme] = useState<ThemeSetting>('auto');
   const [busy, setBusy] = useState(false);
+  const [pending, setPending] = useState<{ session: string; question: Question } | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const completeSeq = useRef(0);
@@ -38,36 +49,59 @@ export function App() {
     return () => media.removeEventListener('change', onChange);
   }, [theme]);
 
-  const run = useCallback(async (line: string, record = true) => {
-    const trimmed = line.trim();
-    if (!trimmed) return;
-    if (record) {
-      setHistory((h) => (h[h.length - 1] === trimmed ? h : [...h, trimmed]));
-      setHistoryIndex(null);
-    }
-    if (trimmed === 'clear') {
-      setEntries([]);
-      return;
-    }
-    setBusy(true);
-    try {
-      const res = await api.run(trimmed);
-      setEntries((e) => [...e, { id: nextId++, line: trimmed, blocks: res.blocks }]);
-      setState(res.state);
-      setTheme(res.state.theme);
-    } catch {
-      setEntries((e) => [
-        ...e,
-        {
-          id: nextId++,
-          line: trimmed,
-          blocks: [{ kind: 'status', level: 'error', spans: [{ text: "Can't reach keel serve. Is it still running?" }] }],
-        },
-      ]);
-    } finally {
-      setBusy(false);
-    }
+  const settle = useCallback((res: ApiResult) => {
+    setState(res.state);
+    setTheme(res.state.theme);
+    setPending(res.question && res.session ? { session: res.session, question: res.question } : null);
   }, []);
+
+  const run = useCallback(
+    async (line: string, record = true) => {
+      const trimmed = line.trim();
+      if (!trimmed) return;
+      if (record) {
+        setHistory((h) => (h[h.length - 1] === trimmed ? h : [...h, trimmed]));
+        setHistoryIndex(null);
+      }
+      if (trimmed === 'clear') {
+        setEntries([]);
+        return;
+      }
+      setBusy(true);
+      try {
+        const res = await api.run(trimmed);
+        setEntries((e) => [...e, { id: nextId++, line: trimmed, blocks: res.blocks }]);
+        settle(res);
+      } catch {
+        setEntries((e) => [...e, { id: nextId++, line: trimmed, blocks: unreachable }]);
+      } finally {
+        setBusy(false);
+      }
+    },
+    [settle],
+  );
+
+  /** Answers the waiting question; the reply joins the same entry in the scrollback. */
+  const reply = useCallback(
+    async (text: string | null) => {
+      if (!pending) return;
+      const appendToLast = (blocks: Block[]) =>
+        setEntries((e) => (e.length ? [...e.slice(0, -1), { ...e[e.length - 1]!, blocks: [...e[e.length - 1]!.blocks, ...blocks] }] : e));
+      appendToLast([echo(pending.question, text)]);
+      setBusy(true);
+      try {
+        const res = await api.answer(pending.session, text);
+        appendToLast(res.blocks);
+        settle(res);
+      } catch {
+        appendToLast(unreachable);
+        setPending(null);
+      } finally {
+        setBusy(false);
+      }
+    },
+    [pending, settle],
+  );
 
   // Start where the day starts.
   const started = useRef(false);
@@ -84,7 +118,7 @@ export function App() {
   // Autocomplete and live preview, debounced; stale answers are ignored.
   useEffect(() => {
     const seq = ++completeSeq.current;
-    if (!input.trim()) {
+    if (!input.trim() || pending) {
       setCompletion(null);
       return;
     }
@@ -100,9 +134,9 @@ export function App() {
       }
     }, 80);
     return () => clearTimeout(timer);
-  }, [input]);
+  }, [input, pending]);
 
-  const suggestions = !dismissed && completion ? completion.suggestions : [];
+  const suggestions = !dismissed && !pending && completion ? completion.suggestions : [];
 
   const accept = (index: number) => {
     const pick = suggestions[index];
@@ -118,7 +152,12 @@ export function App() {
       setInput('');
       setCompletion(null);
       setDismissed(false);
-      void run(line);
+      if (pending) void reply(line);
+      else void run(line);
+    } else if (e.key === 'Escape' && pending) {
+      e.preventDefault();
+      setInput('');
+      void reply(null);
     } else if (e.key === 'Tab') {
       e.preventDefault();
       accept(selected);
@@ -188,7 +227,7 @@ export function App() {
           ))}
         </div>
 
-        {(suggestions.length > 0 || completion?.preview) && !dismissed && (
+        {(suggestions.length > 0 || completion?.preview) && !dismissed && !pending && (
           <div className="suggest" role="listbox" aria-label="Suggestions">
             {suggestions.map((sug, i) => (
               <div
@@ -216,9 +255,11 @@ export function App() {
           </div>
         )}
 
+        {pending?.question.hint && <div className="question-hint">{pending.question.hint}</div>}
         <div className="prompt-row">
-          <label htmlFor="prompt" className="chev">
-            ›<span className="sr-only">Command</span>
+          <label htmlFor="prompt" className={pending && pending.question.prompt !== '›' ? 'question' : 'chev'}>
+            {pending && pending.question.prompt !== '›' ? `│ ${pending.question.prompt}` : '›'}
+            {!pending && <span className="sr-only">Command</span>}
           </label>
           <input
             id="prompt"
@@ -230,7 +271,7 @@ export function App() {
             autoComplete="off"
             spellCheck={false}
             aria-busy={busy}
-            placeholder="type a command: today, owe, wait, switch, help"
+            placeholder={pending ? 'type your answer, enter to send, esc to cancel' : 'type a command: today, owe, wait, switch, help'}
           />
         </div>
 

@@ -37,6 +37,24 @@ describe('api', () => {
     expect(json.state.context.path).toBe('acme/website');
   });
 
+  it('asks and answers questions across requests', async () => {
+    await post({ line: 'client new acme Acme' });
+    await post({ line: 'project new acme/website Website' });
+    const started = (await (await post({ line: 'park' })).json()) as { question?: { prompt: string }; session?: string };
+    expect(started.question?.prompt).toBe('Where are you?');
+    const answer = (text: string | null) =>
+      app.request('/api/answer', {
+        method: 'POST',
+        headers: { ...HOST, 'content-type': 'application/json' },
+        body: JSON.stringify({ session: started.session, text }),
+      });
+    await answer('pricing copy done');
+    await answer('');
+    const done = (await (await answer('')).json()) as { blocks: Array<{ kind: string }>; question?: unknown; state: { context: unknown } };
+    expect(done.question).toBeUndefined();
+    expect(done.state.context).toBeNull();
+  });
+
   it('completes', async () => {
     const res = await app.request('/api/complete?line=to', { headers: HOST });
     expect(((await res.json()) as { suggestions: Array<{ insert: string }> }).suggestions[0]?.insert).toBe('today');

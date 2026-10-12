@@ -165,7 +165,7 @@ keel/                       (pnpm workspaces, TypeScript)
   docs/
 ```
 
-- **One endpoint for commands.** The browser sends the command text to `POST /api/run` and gets blocks back. Autocomplete uses a read-only `GET /api/complete`. Interactive `question` blocks continue through the same endpoint with a session id.
+- **One endpoint for commands.** The browser sends the command text to `POST /api/run` and gets blocks back. Autocomplete uses a read-only `GET /api/complete`. Interactive commands pause with a question; the answer goes to `POST /api/answer` with the session id.
 - **Storage:** libSQL client. v1: `KEEL_DB_URL=file:~/.keel/keel.db`. v2: `libsql://<name>.turso.io` with `KEEL_DB_TOKEN`. The code path is the same either way.
 - **Running modes:**
   - *Local (v1):* `keel serve` starts the API and the browser terminal on localhost only. The CLI uses the same database file through core.

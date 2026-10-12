@@ -1,4 +1,4 @@
-import { palettes, type Paint, type ThemeName } from '@keel/core';
+import { palettes, type Paint, type Question, type ThemeName } from '@keel/core';
 
 /**
  * Picks the palette for the terminal's background:
@@ -87,4 +87,11 @@ export function banner(paint: Paint, version: string, dbLabel: string): string {
     `  ${paint('keel help', { tone: 'accent' })}        ${paint('everything else', { tone: 'muted' })}`,
     '',
   ].join('\n');
+}
+
+/** The hint on its own line (only when it changes), then "│ Where are you? " with the cursor after it. */
+export function formatPrompt(q: Question, paint: Paint, showHint: boolean): string {
+  const hint = showHint && q.hint ? `${paint(q.hint, { tone: 'muted' })}\n` : '';
+  if (q.prompt === '›') return `${hint}${paint('›', { tone: 'accent', bold: true })} `;
+  return `${hint}${paint('│', { tone: 'muted' })} ${paint(q.prompt, { tone: 'accent', bold: true })} `;
 }

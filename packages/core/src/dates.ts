@@ -81,3 +81,25 @@ export function formatStamp(iso: string): string {
   const d = new Date(iso);
   return `${formatDay(ymd(d))} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
+
+/** ISO 8601 week number (weeks start on Monday). */
+export function isoWeek(day: string): number {
+  const [y, m, d] = day.split('-').map(Number);
+  const date = new Date(Date.UTC(y!, m! - 1, d!));
+  const dow = (date.getUTCDay() + 6) % 7;
+  date.setUTCDate(date.getUTCDate() - dow + 3);
+  const firstThursday = new Date(Date.UTC(date.getUTCFullYear(), 0, 4));
+  return 1 + Math.round(((date.getTime() - firstThursday.getTime()) / 86_400_000 - 3 + ((firstThursday.getUTCDay() + 6) % 7)) / 7);
+}
+
+/** "12 to 18 Oct", or "28 Sep to 4 Oct" across months. */
+export function formatRange(from: string, to: string): string {
+  const [, fromDay, fromMonth] = formatDay(from).split(' ');
+  const [, toDay, toMonth] = formatDay(to).split(' ');
+  return fromMonth === toMonth ? `${fromDay} to ${toDay} ${toMonth}` : `${fromDay} ${fromMonth} to ${toDay} ${toMonth}`;
+}
+
+/** Local midnight of a calendar day, as a UTC ISO timestamp. */
+export function dayStartIso(day: string): string {
+  return fromYmd(day).toISOString();
+}

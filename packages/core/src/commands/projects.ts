@@ -6,7 +6,7 @@ import { KeelError } from '../errors';
 import { CLIENT_HUES } from '../palettes';
 import type { Parsed } from '../parse';
 import type { ProjectView, Store } from '../store';
-import { commitmentRow, projectSpan, type Command } from './shared';
+import { commitmentRow, projectSpan, type Command, type Flow } from './shared';
 import { noteBlock } from './views';
 
 const SLUG = /^[a-z0-9][a-z0-9-]*$/;
@@ -112,32 +112,70 @@ async function listProjects(k: Store): Promise<Block[]> {
   ];
 }
 
-function noteFields(p: Parsed) {
+export interface NoteFields {
+  whereIAm: string | null;
+  nextStep: string | null;
+  unsureAbout: string | null;
+}
+
+function noteFields(p: Parsed): NoteFields | null {
   const { where, next, unsure } = p.kv;
   if (where === undefined && next === undefined && unsure === undefined) return null;
   return { whereIAm: where || null, nextStep: next || null, unsureAbout: unsure || null };
 }
 
-const NOTE_USAGE = 'park where:"..." next:"..." unsure:"..."';
+/** Asks the three resume-note questions. Returns null when every answer was skipped. */
+export async function* askNote(project: Pick<ProjectView, 'path' | 'hue' | 'project'>, intro: string): Flow<NoteFields | null> {
+  const skip = 'enter on an empty line skips';
+  const where = yield {
+    blocks: [line([s('◆ ', 'accent'), s(`${intro} `), projectSpan(project)])],
+    question: { prompt: 'Where are you?', hint: skip },
+  };
+  const next = yield { blocks: [], question: { prompt: "What's next?", hint: skip } };
+  const unsure = yield { blocks: [], question: { prompt: 'Unsure about?', hint: skip } };
+  const clean = (x: string) => x.trim() || null;
+  if (!clean(where) && !clean(next) && !clean(unsure)) return null;
+  return { whereIAm: clean(where), nextStep: clean(next), unsureAbout: clean(unsure) };
+}
+
+export function saveNote(k: Store, projectId: string, fields: NoteFields) {
+  const at = k.iso();
+  return [
+    k.db.insert(t.resumeNotes).values({ id: k.newId(), ...k.stamps(), projectId, ...fields }),
+    k.db.update(t.projects).set({ lastTouchedAt: at, updatedAt: at }).where(eq(t.projects.id, projectId)),
+  ];
+}
 
 export const switchCommand: Command = {
   name: 'switch',
   usage: 'switch <client/project> [where:"..." next:"..." unsure:"..."]',
-  summary: 'Change context; shows the resume note waiting for you',
-  async run(k, p) {
+  summary: 'Change context; asks for a resume note on the way out',
+  async *flow(k, p) {
     const path = p.words[0] ?? p.projects[0];
     if (!path) throw new KeelError('Switch to which project?', 'Example: switch acme/website');
     const target = await k.projectByPath(path.replace(/^\+/, ''));
     const leaving = await k.contextProject();
     if (leaving?.project.id === target.project.id) return [warn(`Already in ${target.path}.`)];
 
-    const at = k.iso();
+    const out: Block[] = [];
     const openLog = await k.openContextLog();
-    const fields = noteFields(p);
+    let fields = noteFields(p);
+    if (leaving && !fields) {
+      const note = await k.latestResumeNote(leaving.project.id);
+      const fresh = note && openLog && note.createdAt >= openLog.startedAt;
+      if (!fresh) {
+        const minutes = openLog ? Math.round((k.now().getTime() - new Date(openLog.startedAt).getTime()) / 60_000) : 0;
+        fields = yield* askNote(leaving, minutes >= 1 ? `Leaving after ${formatDuration(minutes)}. Resume note for` : 'Resume note for');
+        if (!fields) out.push(warn([s('Left '), projectSpan(leaving), s(' without a resume note.')]));
+      }
+    }
+
+    const at = k.iso();
     const queries = [];
     if (openLog) queries.push(k.db.update(t.contextLog).set({ endedAt: at, updatedAt: at }).where(eq(t.contextLog.id, openLog.id)));
     if (leaving && fields) {
-      queries.push(k.db.insert(t.resumeNotes).values({ id: k.newId(), ...k.stamps(), projectId: leaving.project.id, ...fields }));
+      queries.push(...saveNote(k, leaving.project.id, fields));
+      out.push(ok([s('Resume note saved for '), projectSpan(leaving)]));
     }
     queries.push(
       k.db.insert(t.contextLog).values({ id: k.newId(), ...k.stamps(), projectId: target.project.id, startedAt: at }),
@@ -145,21 +183,12 @@ export const switchCommand: Command = {
       k.db.update(t.projects).set({ lastTouchedAt: at, updatedAt: at }).where(eq(t.projects.id, target.project.id)),
       k.event('project', target.project.id, 'switched-in', { from: leaving?.path ?? null }),
     );
-
-    // Check for a note on the project being left before writing anything.
-    const out: Block[] = [];
-    if (leaving) {
-      const note = await k.latestResumeNote(leaving.project.id);
-      const wroteNote = fields !== null || (note && openLog && note.createdAt >= openLog.startedAt);
-      if (wroteNote) out.push(ok([s('Resume note saved for '), projectSpan(leaving)]));
-      else out.push(warn([s('Left '), projectSpan(leaving), s(' without a resume note.')]), hint(`Next time: switch ${target.path} where:"..." next:"..." unsure:"..."`));
-    }
     await k.batch(queries);
 
     const last = target.project.lastTouchedAt;
     const ago = last ? dayDiff(last.slice(0, 10), at.slice(0, 10)) : null;
+    if (out.length) out.push(blank());
     out.push(
-      blank(),
       line([s('◆ ', 'accent'), s('Now in '), projectSpan(target), s(ago === null ? '' : ago === 0 ? ' · last here today' : ` · last here ${ago} days ago`, 'muted')]),
       blank(),
       noteBlock(await k.latestResumeNote(target.project.id), 'Resume note'),
@@ -168,7 +197,11 @@ export const switchCommand: Command = {
     const open = await k.commitmentViews([eq(t.commitments.status, 'open'), eq(t.commitments.projectId, target.project.id)]);
     if (open.length) {
       const day = k.today();
-      out.push(blank(), heading(`OPEN HERE · ${open.length}`), table(open.map((v) => [s(v.c.direction === 'owe' ? 'owe' : 'wait', v.c.direction === 'owe' ? 'accent' : 'wait'), ...commitmentRow(v, day)])));
+      out.push(
+        blank(),
+        heading(`OPEN HERE · ${open.length}`),
+        table(open.map((v) => [s(v.c.direction, v.c.direction === 'owe' ? 'accent' : 'wait'), ...commitmentRow(v, day)])),
+      );
     }
     return out;
   },
@@ -176,20 +209,17 @@ export const switchCommand: Command = {
 
 export const park: Command = {
   name: 'park',
-  usage: `${NOTE_USAGE} [+client/project]`,
+  usage: 'park [where:"..." next:"..." unsure:"..."] [+client/project]',
   summary: 'Save a resume note and leave the project',
-  async run(k, p) {
-    const fields = noteFields(p);
-    if (!fields) throw new KeelError('What should future you know?', `Example: ${NOTE_USAGE}`);
+  async *flow(k, p) {
     const target = await k.projectFromArgs(p);
     if (!target) throw new KeelError('No project to park.', 'Switch to one first, or add +client/project.');
+    const fields = noteFields(p) ?? (yield* askNote(target, 'Resume note for'));
+    if (!fields) return [warn('Nothing saved.')];
+
     const ctx = await k.getSetting('context');
     const at = k.iso();
-    const queries = [
-      k.db.insert(t.resumeNotes).values({ id: k.newId(), ...k.stamps(), projectId: target.project.id, ...fields }),
-      k.db.update(t.projects).set({ lastTouchedAt: at, updatedAt: at }).where(eq(t.projects.id, target.project.id)),
-      k.event('project', target.project.id, 'parked'),
-    ];
+    const queries = [...saveNote(k, target.project.id, fields), k.event('project', target.project.id, 'parked')];
     const leaving = ctx === target.project.id;
     if (leaving) {
       const openLog = await k.openContextLog();
@@ -200,3 +230,11 @@ export const park: Command = {
     return [ok([s('Resume note saved for '), projectSpan(target), s(leaving ? '. Context cleared.' : '.')])];
   },
 };
+
+/** "2h 10m", "45m" */
+export function formatDuration(minutes: number): string {
+  if (minutes < 60) return `${minutes}m`;
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return m ? `${h}h ${m}m` : `${h}h`;
+}

@@ -1,8 +1,8 @@
 import { eq } from 'drizzle-orm';
 import type { Client as LibsqlClient } from '@libsql/client';
-import { fail, hint, s, type Block, type Span, type Tone } from './blocks';
+import { fail, hint, s, warn, type Block, type RunResult, type Span, type Tone } from './blocks';
 import { readCommitment } from './commands/capture';
-import { commands, expand, findCommand } from './commands/index';
+import { commands, expand, findCommand, type Flow } from './commands/index';
 import { SOURCES } from './commands/shared';
 import { formatDay, parseDue } from './dates';
 import { migrateDb, openDb } from './db/client';
@@ -44,6 +44,11 @@ const REF_COMMANDS = new Set(['done', 'drop', 'renegotiate', 'nudge', 'set', 'sh
 const PROJECT_COMMANDS = new Set(['switch']);
 const DUE_PRESETS = ['today', 'tomorrow', 'mon', 'tue', 'wed', 'thu', 'fri', 'eow', '+3d', '+1w', '+2w'];
 
+function errorBlocks(e: unknown): Block[] {
+  if (e instanceof KeelError) return [fail(e.message), ...(e.hint ? [hint(e.hint)] : [])];
+  throw e;
+}
+
 /** One Keel instance per database. Both terminals talk to it through `run`. */
 export class Keel {
   private constructor(
@@ -61,23 +66,72 @@ export class Keel {
     this.client.close();
   }
 
-  async run(input: string): Promise<Block[]> {
+  /** Paused interactive commands, by session id. Single user, so a small in-memory map is enough. */
+  private sessions = new Map<string, { flow: Flow; touched: number }>();
+
+  /** Starts a command. If it asks a question, the result carries `question` and `session`. */
+  async exec(input: string): Promise<RunResult> {
     let tokens = tokenize(input.trim());
     if (tokens[0]?.text === 'keel') tokens = tokens.slice(1);
-    if (tokens.length === 0) return findCommand('help')!.run(this.store, classify([]));
+    if (tokens.length === 0) return { blocks: await findCommand('help')!.run!(this.store, classify([])) };
 
     const name = tokens[0]!.text.toLowerCase();
     const expansion = expand(name);
-    if (expansion) return this.run(`${expansion} ${tokens.slice(1).map((x) => x.text).join(' ')}`);
+    if (expansion) return this.exec(`${expansion} ${tokens.slice(1).map((x) => (x.quoted ? JSON.stringify(x.text) : x.text)).join(' ')}`);
 
     const command = findCommand(name);
-    if (!command) return [fail(`Unknown command "${name}".`), hint('Type help to see all commands.')];
+    if (!command) return { blocks: [fail(`Unknown command "${name}".`), hint('Type help to see all commands.')] };
+    const parsed = classify(tokens.slice(1));
     try {
-      return await command.run(this.store, classify(tokens.slice(1)));
+      if (command.flow) return await this.step(command.flow(this.store, parsed), undefined, this.store.newId());
+      return { blocks: await command.run!(this.store, parsed) };
     } catch (e) {
-      if (e instanceof KeelError) return [fail(e.message), ...(e.hint ? [hint(e.hint)] : [])];
-      throw e;
+      return { blocks: errorBlocks(e) };
     }
+  }
+
+  /** Answers the question a paused command asked. `null` cancels it. */
+  async answer(session: string, text: string | null): Promise<RunResult> {
+    this.expireSessions();
+    const entry = this.sessions.get(session);
+    if (!entry) return { blocks: [fail('That question expired. Run the command again.')] };
+    if (text === null) {
+      this.sessions.delete(session);
+      await entry.flow.return([]);
+      return { blocks: [warn('Cancelled. Anything already saved stays saved.')] };
+    }
+    return this.step(entry.flow, text, session);
+  }
+
+  /** Runs a command to the end, answering every question with "skip". For scripts, pipes and tests. */
+  async run(input: string): Promise<Block[]> {
+    let result = await this.exec(input);
+    const blocks = [...result.blocks];
+    for (let guard = 0; result.question && result.session && guard < 1000; guard++) {
+      result = await this.answer(result.session, '');
+      blocks.push(...result.blocks);
+    }
+    return blocks;
+  }
+
+  private async step(flow: Flow, answer: string | undefined, session: string): Promise<RunResult> {
+    try {
+      const next = await flow.next(answer as string);
+      if (next.done) {
+        this.sessions.delete(session);
+        return { blocks: next.value };
+      }
+      this.sessions.set(session, { flow, touched: Date.now() });
+      return { blocks: next.value.blocks, question: next.value.question, session };
+    } catch (e) {
+      this.sessions.delete(session);
+      return { blocks: errorBlocks(e) };
+    }
+  }
+
+  private expireSessions(): void {
+    const cutoff = Date.now() - 2 * 60 * 60 * 1000;
+    for (const [id, entry] of this.sessions) if (entry.touched < cutoff) this.sessions.delete(id);
   }
 
   async state(): Promise<KeelState> {

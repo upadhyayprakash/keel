@@ -69,3 +69,18 @@ export const hint = (text: string): Block => line([s(text, 'muted')], 2);
 function status(level: 'success' | 'warning' | 'error', spans: Span[] | string): Block {
   return { kind: 'status', level, spans: typeof spans === 'string' ? [s(spans)] : spans };
 }
+
+/** A command can pause and ask. The CLI prompts in the terminal; the browser shows an inline prompt. */
+export interface Question {
+  prompt: string;
+  hint?: string;
+  choices?: Array<{ key: string; label: string }>;
+}
+
+export interface RunResult {
+  blocks: Block[];
+  /** Present while a command is waiting for an answer. */
+  question?: Question;
+  /** Pass back with the answer. */
+  session?: string;
+}

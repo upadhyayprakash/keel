@@ -177,6 +177,18 @@ pre.raw {
   padding: 4px 22px 14px;
 }
 
+.prompt-row .question {
+  color: var(--t-accent);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.question-hint {
+  padding: 0 22px 2px;
+  color: var(--t-muted);
+  font-size: 12px;
+}
+
 .prompt-row input {
   flex: 1;
   min-width: 0;

@@ -1,11 +1,15 @@
 import { inbox, owe, wait } from './capture';
 import { done, drop, focus, nudge, renegotiate, set } from './edit';
 import { exportCommand, helpCommand, theme } from './misc';
+import { meeting } from './meeting';
 import { client, park, project, switchCommand } from './projects';
+import { review } from './review';
 import type { Command } from './shared';
+import { summary } from './summary';
+import { triage } from './triage';
 import { ls, show, today } from './views';
 
-export type { Command } from './shared';
+export type { Command, Flow, Step } from './shared';
 
 const list: Command[] = [];
 const help = helpCommand(() => list);
@@ -15,6 +19,7 @@ list.push(
   owe,
   wait,
   inbox,
+  meeting,
   ls,
   show,
   focus,
@@ -25,6 +30,9 @@ list.push(
   set,
   switchCommand,
   park,
+  triage,
+  review,
+  summary,
   client,
   project,
   theme,

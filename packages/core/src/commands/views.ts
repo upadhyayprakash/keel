@@ -1,6 +1,6 @@
 import { eq } from 'drizzle-orm';
 import { blank, heading, hint, line, s, table, type Block, type Span, type Tone } from '../blocks';
-import { addDays, dayDiff, formatDay, formatStamp } from '../dates';
+import { addDays, dayDiff, formatDay, formatStamp, weekStart, ymd } from '../dates';
 import * as t from '../db/schema';
 import { KeelError } from '../errors';
 import { parseRef } from '../parse';
@@ -8,6 +8,8 @@ import type { CommitmentView, Store } from '../store';
 import { commitmentRow, matchesScope, projectSpan, type Command } from './shared';
 
 const STALE_DAYS = 7;
+
+const formatLocal = (iso: string) => ymd(new Date(iso));
 
 export const today: Command = {
   name: 'today',
@@ -29,9 +31,15 @@ export const today: Command = {
         ctx ? projectSpan(ctx) : s('none', 'dim'),
         ...(scope ? [s(` · showing +${scope}`, 'muted')] : []),
       ]),
-      blank(),
-      heading('FOCUS', 'accent'),
     ];
+
+    const priorities: Record<string, string> = JSON.parse((await k.getSetting(`priorities:${weekStart(day)}`)) ?? '{}');
+    const clientHues = new Map((await k.listClients()).map((c) => [c.slug, c.color as Tone]));
+    const weekly = Object.entries(priorities).filter(([slug]) => !scope || scope.split('/')[0] === slug);
+    if (weekly.length) {
+      out.push(blank(), heading('THIS WEEK', 'muted'), table(weekly.map(([slug, text]) => [s(slug, clientHues.get(slug) ?? 'muted'), s(text)])));
+    }
+    out.push(blank(), heading('FOCUS', 'accent'));
 
     const focusTable: Span[][] = [];
     for (let slot = 1; slot <= 3; slot++) {
@@ -57,6 +65,13 @@ export const today: Command = {
     const quiet = await quietProjects(k, open, scope);
     if (quiet.length) {
       out.push(blank(), heading('GOING QUIET'), table(quiet));
+    }
+
+    // Friday to Sunday, until this week's review is done.
+    const lastReview = await k.getSetting('lastReviewAt');
+    const dow = k.now().getDay();
+    if ((dow === 5 || dow === 6 || dow === 0) && (!lastReview || formatLocal(lastReview) < weekStart(day))) {
+      out.push(blank(), line([s('◆ ', 'accent'), s('Review day. Run '), s('review', 'accent', { bold: true }), s(' to close the week (about 30 min).')]));
     }
 
     if (open.length === 0) {

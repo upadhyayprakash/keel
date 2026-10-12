@@ -1,15 +1,25 @@
-import { s, type Block, type Span } from '../blocks';
+import { s, type Block, type Question, type Span } from '../blocks';
 import { describeDue } from '../dates';
 import { KeelError } from '../errors';
 import { parseRef, type Parsed } from '../parse';
 import type { CommitmentView, ProjectView, Store } from '../store';
+
+/** One pause in an interactive command: what to show, then what to ask. */
+export interface Step {
+  blocks: Block[];
+  question: Question;
+}
+
+/** Interactive commands are async generators: they yield questions and receive the answers. */
+export type Flow<T = Block[]> = AsyncGenerator<Step, T, string>;
 
 export interface Command {
   name: string;
   aliases?: string[];
   usage: string;
   summary: string;
-  run(k: Store, p: Parsed): Promise<Block[]>;
+  run?(k: Store, p: Parsed): Promise<Block[]>;
+  flow?(k: Store, p: Parsed): Flow;
 }
 
 export const SOURCES = ['meeting', 'slack', 'email', 'claude', 'other'] as const;

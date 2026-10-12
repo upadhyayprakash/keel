@@ -40,12 +40,20 @@ export function createApp({ keel, port, webDist = DEFAULT_DIST, devOrigin }: Ser
     await next();
   });
 
+  // Both return a RunResult (blocks, plus question and session while a command waits for an answer) and the state.
   app.post('/api/run', async (c) => {
     if (!c.req.header('content-type')?.startsWith('application/json')) return c.text('Expected JSON', 415);
     const body = await c.req.json<{ line?: unknown }>().catch(() => ({ line: undefined }));
-    const line = typeof body.line === 'string' ? body.line : '';
-    const blocks = await keel.run(line);
-    return c.json({ blocks, state: await keel.state() });
+    const result = await keel.exec(typeof body.line === 'string' ? body.line : '');
+    return c.json({ ...result, state: await keel.state() });
+  });
+
+  app.post('/api/answer', async (c) => {
+    if (!c.req.header('content-type')?.startsWith('application/json')) return c.text('Expected JSON', 415);
+    const body = await c.req.json<{ session?: unknown; text?: unknown }>().catch(() => ({ session: undefined, text: undefined }));
+    if (typeof body.session !== 'string') return c.json({ error: 'Missing session' }, 400);
+    const result = await keel.answer(body.session, typeof body.text === 'string' ? body.text : null);
+    return c.json({ ...result, state: await keel.state() });
   });
 
   app.get('/api/state', async (c) => c.json(await keel.state()));
