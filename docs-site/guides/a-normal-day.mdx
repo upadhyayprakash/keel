@@ -1,0 +1,56 @@
+---
+title: "A normal day"
+description: "Start with today, capture promises, pick your focus, close the loop."
+---
+
+## Start with today
+
+```text
+today
+```
+
+You see the project you're working on, your focus, what you owe that's due or late, what you're waiting on that needs a follow-up, the next three days, and projects going quiet. Add `+acme` to see one client only.
+
+## Capture
+
+```text
+owe send pricing deck @ravi due:thu
+wait design files @meera due:fri
+in ask Ravi about the phase 2 budget
+```
+
+- `@ravi` is the person. New people are created as you go.
+- `due:` takes `today`, `tomorrow`, a weekday, `eow` (end of week), `+3d`, `+2w` or a date like `2026-10-20`.
+- It lands in the project you're working on. Add `+northwind/portal` to put it somewhere else.
+- Optional: `from:meeting`, `from:slack:` followed by the link to the message, and `#tags`.
+- `in` takes anything, with no person or date. Sort it later with `triage`.
+
+See [syntax](/reference/syntax) for every token.
+
+## Pick your focus
+
+```text
+focus c1 c4
+```
+
+Up to three. Everything else stays visible below them in `today`.
+
+## Close the loop
+
+```text
+done c1                    # kept
+renegotiate c4 due:mon     # you agreed a new date
+nudge c2                   # you chased someone
+drop c7                    # no longer needed
+set c3 title:"send revised deck" due:fri @priya
+```
+
+## Look things up
+
+```text
+ls                 # everything open
+ls owe             # or: wait, overdue, done, inbox
+ls +acme @ravi     # by client or project, and person
+show c1            # details and history
+show p1            # a project, its resume note and open items
+```

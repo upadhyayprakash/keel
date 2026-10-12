@@ -1,0 +1,45 @@
+---
+title: "Several devices"
+description: "Keep the same data on your work laptop and your personal one."
+---
+
+Each device keeps a local copy, synced with one hosted database. [Turso](https://turso.tech) has a free tier, and any libSQL server works. Commands stay fast, and reading works offline. The design is recorded in [ADR 0001](https://github.com/upadhyayprakash/keel/blob/main/docs/adr/0001-multi-device-sync.md).
+
+<Tip>
+Pick the database region closest to you. Every change makes a round trip to it.
+</Tip>
+
+## On your first device
+
+<Steps>
+  <Step title="Create a database and a token">
+    In the Turso dashboard, or with the Turso CLI:
+    ```bash
+    turso db create keel
+    turso db tokens create keel
+    ```
+  </Step>
+  <Step title="Connect">
+    ```bash
+    keel db connect libsql://keel-<you>.turso.io
+    ```
+    Paste the token when asked; it isn't shown as you type. Keel offers to copy your data to the hosted database, checks the copy, and stores the token in your macOS Keychain (or the system keyring on Linux), never in a file you'd share.
+  </Step>
+</Steps>
+
+## On every other device
+
+```bash
+npm install -g @nouisi/keel
+keel db connect libsql://keel-<you>.turso.io
+```
+
+Paste the same token and confirm using the hosted data. If that device already had Keel data of its own, Keel saves it to a backup file first: it never mixes the two.
+
+## Good to know
+
+- `keel db` shows where your data lives, whether you're online, and where the token is kept. It never prints the token.
+- Offline, `today`, `ls` and `show` keep working. Changes say "You're offline, so this wasn't saved", so nothing is lost silently.
+- Changes from your other devices arrive when you run a command, and every 30 seconds in the browser terminal.
+- `keel db disconnect` stops syncing on this device and keeps a full local copy. The hosted database stays as it is.
+- Lost a laptop? Create a new token for the database (which invalidates the old one) and connect again on the devices you still have.

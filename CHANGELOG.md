@@ -10,15 +10,14 @@ All notable changes to Keel. The format follows [Keep a Changelog](https://keepa
 
 - Use Keel on several devices ([ADR 0001](docs/adr/0001-multi-device-sync.md)): `keel db connect <address>` keeps a synced local copy of a hosted libSQL database (Turso or a libSQL server) on each device. The first device copies its data up after a confirmation and a check; later devices adopt it, and local data is backed up rather than mixed. The token is stored in the macOS Keychain or the Linux keyring. Offline, reading works and changes are refused clearly. `keel db` shows where data lives; `keel db disconnect` goes back to a local copy.
 - `KEEL_HOME` moves Keel's folder (database, config, backups, history).
+- The Keel shell: run `keel` on its own (or `keel shell`) for a session where you type commands without the `keel` prefix. The prompt shows the project you're working on, Tab completes, ↑ recalls history across sessions, questions are asked inline, `exit` or Ctrl+D leaves.
+- Autocomplete that knows every command: subcommands after `client`, `project` and `person`; the right clients for `rename`, `archive` and `unarchive`; refs that fit each command (`nudge` only offers what you're waiting on); keys and status values for `set`; and `owe`/`wait` guide you through who, when and where from. Shared by the browser terminal, the shell and zsh/bash completion.
 
 ### Fixed
 
 - Faster on a hosted database: opening skips the migration step when nothing is new (it used to cost a write round trip every time), and changes are sent to the hosted database in one request before the local copy catches up. Measured from India to Ireland: `ls` 4.1 s to 0.9 s, a change 4.0 s to 2.5 s (under 1.1 s in the shell); much less with a nearby region.
 - A hosted connection dropped while idle no longer loses a change: Keel retries once, safely, since every row's id is set before sending.
 - Backup and file names use the local date, not UTC.
-
-- The Keel shell: run `keel` on its own (or `keel shell`) for a session where you type commands without the `keel` prefix. The prompt shows the project you're working on, Tab completes, ↑ recalls history across sessions, questions are asked inline, `exit` or Ctrl+D leaves.
-- Autocomplete that knows every command: subcommands after `client`, `project` and `person`; the right clients for `rename`, `archive` and `unarchive`; refs that fit each command (`nudge` only offers what you're waiting on); keys and status values for `set`; and `owe`/`wait` guide you through who, when and where from. Shared by the browser terminal, the shell and zsh/bash completion.
 
 ## [0.2.0] - 2026-10-12
 

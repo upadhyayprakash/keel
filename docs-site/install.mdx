@@ -1,0 +1,60 @@
+---
+title: "Install"
+description: "Install Keel with npm and check that it works."
+---
+
+## Requirements
+
+Node.js **20.19 or newer**. Check with:
+
+```bash
+node --version
+```
+
+If it's missing or older, install the current LTS from [nodejs.org](https://nodejs.org), or with a version manager such as `nvm` or `fnm`.
+
+## Install
+
+```bash
+npm install -g @nouisi/keel
+```
+
+Then check it:
+
+```bash
+keel --version
+keel
+```
+
+`keel` on its own opens the [Keel shell](/guides/the-shell). Type `exit` (or press Ctrl+D) to leave it.
+
+<Warning>
+If `npm install -g` fails with `EACCES`, your Node install wants administrator rights for global packages. Install Node through a version manager instead of using `sudo`.
+</Warning>
+
+## Tab completion
+
+Keel completes commands, people, projects, refs and dates when you press Tab. Turn it on for your shell, then open a new terminal:
+
+<CodeGroup>
+
+```bash zsh (macOS default)
+echo 'eval "$(keel completion zsh)"' >> ~/.zshrc
+```
+
+```bash bash
+echo 'eval "$(keel completion bash)"' >> ~/.bashrc
+```
+
+</CodeGroup>
+
+Inside the Keel shell, Tab completion works without this.
+
+## Update or uninstall
+
+```bash
+npm install -g @nouisi/keel@latest   # update
+npm uninstall -g @nouisi/keel        # remove (your data in ~/.keel stays)
+```
+
+Next: the [quickstart](/quickstart).

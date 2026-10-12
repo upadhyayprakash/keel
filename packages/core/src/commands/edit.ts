@@ -15,7 +15,7 @@ function close(status: 'done' | 'dropped'): Command {
   const name = status === 'done' ? 'done' : 'drop';
   return {
     name,
-    usage: `${name} <c42|i3>`,
+    usage: status === 'done' ? 'done <c42>' : 'drop <c42|i3>',
     summary: status === 'done' ? 'Mark a commitment done' : 'Drop a commitment or inbox item',
     async run(k, p) {
       const ref = refArg(p, status === 'done' ? ['c'] : ['c', 'i'], `Example: ${name} c42`);

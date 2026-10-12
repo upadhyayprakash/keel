@@ -1,0 +1,21 @@
+---
+title: "Your data"
+description: "Where it lives, backups, export and import."
+---
+
+- Everything lives in `~/.keel/keel.db`, one SQLite file. Move Keel's folder with `KEEL_HOME`, or point at another database with `KEEL_DB_URL`. See [environment](/reference/environment).
+- Keel writes a full JSON backup to `~/.keel/backups/` the first time you use it each day, and keeps the last 14. Change that with `KEEL_BACKUP_KEEP` (`0` turns it off).
+
+## Export and import
+
+```bash
+keel export > keel-backup.json     # everything, as JSON
+keel export --md > keel.md         # a readable snapshot of every client, project and commitment
+keel import keel-backup.json       # restore into an empty database
+```
+
+Import only fills an empty database, so nothing is ever overwritten. It writes everything in one step: a bad file saves nothing.
+
+## Scripts
+
+Add `--json` to any command for output that scripts can read. See [JSON output](/reference/json).

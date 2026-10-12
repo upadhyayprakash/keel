@@ -1,0 +1,66 @@
+---
+title: "Quickstart"
+description: "From install to your first promise in five minutes."
+---
+
+The commands below work in the Keel shell (run `keel`) without the prefix, or with `keel` in front in any terminal.
+
+<Steps>
+  <Step title="Open Keel">
+    ```bash
+    keel
+    ```
+    You're in the Keel shell. It opens on `today`, which is empty for now and suggests the first two commands.
+  </Step>
+  <Step title="Add a client and a project">
+    A client is who the work is for, or any area of your life. A project is one piece of work inside it.
+    ```text
+    client new acme "Acme Corp"
+    project new acme/website "Website rebuild"
+    ```
+    Keel answers `You are now working on acme/website`. New items land in the project you're working on.
+  </Step>
+  <Step title="Capture a promise you made">
+    ```text
+    owe send pricing deck @ravi due:thu
+    ```
+    `@ravi` is the person (created as you go) and `due:` takes `today`, `tomorrow`, a weekday, `+3d` or a date. Keel answers with a ref: `c1`.
+  </Step>
+  <Step title="Capture a promise made to you">
+    ```text
+    wait design files @meera due:fri
+    ```
+  </Step>
+  <Step title="Pick today's focus">
+    ```text
+    focus c1
+    today
+    ```
+  </Step>
+  <Step title="Close the loop">
+    ```text
+    done c1
+    ```
+  </Step>
+</Steps>
+
+<Tip>
+Press Tab at any point. After `owe send deck` Keel suggests people, then due dates, then where the promise came from.
+</Tip>
+
+## Where to go next
+
+<CardGroup cols={2}>
+  <Card title="The ideas" icon="lightbulb" href="/concepts">
+    What clients, projects, refs and resume notes are.
+  </Card>
+  <Card title="A normal day" icon="sun" href="/guides/a-normal-day">
+    Capture, focus, follow up, close.
+  </Card>
+  <Card title="Meetings" icon="users" href="/guides/meetings">
+    Capture promises as they come up.
+  </Card>
+  <Card title="Switching projects" icon="shuffle" href="/guides/switching-projects">
+    Restart in two minutes, not thirty.
+  </Card>
+</CardGroup>

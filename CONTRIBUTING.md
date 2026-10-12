@@ -19,6 +19,8 @@ pnpm keel today         # run from source
 
 Add user-facing changes to `CHANGELOG.md` under Unreleased.
 
+User docs live in `docs-site/` (Mintlify). The command reference and the changelog page are generated from the code: after adding or changing a command, add its examples in `docs-site/scripts/generate.ts` and run `pnpm docs:generate`. CI fails if the generated pages are out of date. Preview with `pnpm docs:dev`.
+
 ## Writing style
 
 Plain, short sentences. No em dashes: use a period, comma, colon or parentheses instead.

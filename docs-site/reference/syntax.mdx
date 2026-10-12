@@ -1,0 +1,50 @@
+---
+title: "Syntax"
+description: "The tokens every command understands: people, projects, dates, sources, tags and refs."
+---
+
+Keel commands read like a sentence. Words become the title; special tokens add the details, in any order.
+
+```text
+owe send pricing deck @ravi due:thu +acme/website from:slack:https://acme.slack.com/archives/C1/p2 #legal
+```
+
+| Token | Means | Example |
+|---|---|---|
+| plain words, or `"quoted text"` | The title or name | `send pricing deck` |
+| `@name` | A person (created the first time you use it) | `@ravi` |
+| `+client/project` | A project | `+acme/website` |
+| `+client` | A whole client, as a filter | `ls +acme` |
+| `due:` | A due date | `due:thu` |
+| `from:` | Where the promise came from | `from:meeting` |
+| `#tag` | A free tag | `#legal` |
+| `c12`, `p3`, `i5` | Refs: a commitment, a project, an inbox item | `done c12` |
+| `--json` | Machine-readable output | `ls --json` |
+
+## Dates
+
+| You type | Means |
+|---|---|
+| `due:today`, `due:tomorrow` | Today, tomorrow |
+| `due:mon` to `due:sun` | The next such weekday |
+| `due:eow` | End of this week |
+| `due:+3d`, `due:+2w` | In 3 days, in 2 weeks |
+| `due:2026-10-20` | That date |
+
+Natural phrases work too, quoted: `due:"next friday"`.
+
+## Sources
+
+`from:meeting`, `from:slack`, `from:email`, `from:claude`, `from:other`. Add a link after a colon, such as `from:slack:` followed by the message link, and `show` makes it clickable.
+
+## Fields you can set
+
+Used by `set`, `switch` and `park`. Quote values with spaces: `title:"send revised deck"`.
+
+| Key | Used for |
+|---|---|
+| `title:` | A commitment's title, or a project's name |
+| `due:` | A commitment's due date |
+| `status:` | `open`, `done`, `dropped` for a commitment; `active`, `paused`, `done`, `archived` for a project |
+| `slug:` | A project's or client's short name |
+| `where:`, `next:`, `unsure:` | The three parts of a resume note |

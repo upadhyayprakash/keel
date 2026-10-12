@@ -1,0 +1,40 @@
+---
+title: "Switching projects"
+description: "Restart in two minutes instead of thirty."
+---
+
+```text
+switch northwind/portal
+```
+
+Keel asks three short questions about the project you're leaving. Answer in a few words, or press Enter to skip one:
+
+```text
+│ Where are you?   pricing page copy half done
+│ What's next?     send the deck to Ravi
+│ Unsure about?    whether phase 2 is approved
+```
+
+Then it shows the resume note you left on `northwind/portal` last time, plus its open items. The prompt and `today` now show you working on `northwind/portal`, and new items land there.
+
+You can also give the answers in one line:
+
+```text
+switch acme/website where:"pricing page half done" next:"send deck"
+```
+
+## Stopping for the day
+
+```text
+park
+```
+
+Saves a resume note and leaves you in no project.
+
+## Pausing a project
+
+```text
+set p2 status:paused
+```
+
+Paused projects drop out of `today` but stay in the weekly review. Your time per client in `summary` comes from your switches.

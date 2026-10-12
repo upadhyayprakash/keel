@@ -1,0 +1,67 @@
+{
+  "$schema": "https://mintlify.com/docs.json",
+  "theme": "mint",
+  "name": "Keel",
+  "description": "Keep your promises, priorities and project context in one terminal.",
+  "colors": {
+    "primary": "#C2410C",
+    "light": "#FB923C",
+    "dark": "#C2410C"
+  },
+  "logo": {
+    "light": "/logo/light.svg",
+    "dark": "/logo/dark.svg"
+  },
+  "favicon": "/favicon.svg",
+  "appearance": {
+    "default": "system"
+  },
+  "navbar": {
+    "links": [
+      {
+        "type": "github",
+        "href": "https://github.com/upadhyayprakash/keel"
+      }
+    ],
+    "primary": {
+      "type": "button",
+      "label": "Install",
+      "href": "/install"
+    }
+  },
+  "footer": {
+    "socials": {
+      "github": "https://github.com/upadhyayprakash/keel"
+    }
+  },
+  "navigation": {
+    "groups": [
+      {
+        "group": "Get started",
+        "pages": ["index", "install", "quickstart", "concepts"]
+      },
+      {
+        "group": "Guides",
+        "pages": [
+          "guides/the-shell",
+          "guides/a-normal-day",
+          "guides/meetings",
+          "guides/switching-projects",
+          "guides/weekly-review",
+          "guides/tidying-up",
+          "guides/browser-terminal",
+          "guides/several-devices",
+          "guides/your-data"
+        ]
+      },
+      {
+        "group": "Reference",
+        "pages": ["reference/commands", "reference/syntax", "reference/json", "reference/environment"]
+      },
+      {
+        "group": "Project",
+        "pages": ["changelog"]
+      }
+    ]
+  }
+}

@@ -87,6 +87,7 @@ pnpm build          # browser terminal, then the npm bundle in apps/cli/dist
 ## Docs
 
 - [Get started](docs/get-started.md): install, the ideas behind Keel, and the commands you'll use daily
+- [Docs site source](docs-site/) (Mintlify): `pnpm docs:dev` to preview; `pnpm docs:generate` after changing commands or the changelog
 - [01. Analysis](docs/01-analysis.md): how high-output people manage commitments, and the proposed app shape
 - [02. Spec](docs/02-spec.md): v1 scope, data model, command language, architecture and user flows
 - [Architecture decisions](docs/adr/README.md)

@@ -1,0 +1,32 @@
+---
+title: "Meetings"
+description: "Capture promises as they come up, one line each."
+---
+
+Start meeting mode before or during the call:
+
+```text
+meeting +acme/website "weekly sync"
+```
+
+Then type one line whenever something comes up:
+
+```text
+› > pricing deck to @ravi due:thu
+› < design files from @meera due:fri
+› budget approved for phase 2
+›
+```
+
+| Line starts with | Becomes |
+|---|---|
+| `>` | Something you owe |
+| `<` | Something you're waiting on |
+| anything else | A note, saved to the inbox |
+| an empty line | Ends the meeting |
+
+When the meeting ends, Keel shows what it captured and asks before saving.
+
+<Note>
+A line Keel can't read, for example one with a missing date, is never lost: it's kept as a note in the inbox, ready for `triage`.
+</Note>

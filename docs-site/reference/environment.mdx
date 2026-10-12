@@ -1,0 +1,21 @@
+---
+title: "Environment"
+description: "Settings you can change with environment variables."
+---
+
+| Variable | Default | Does |
+|---|---|---|
+| `KEEL_HOME` | `~/.keel` | Keel's folder: database, synced copy, config, backups, history |
+| `KEEL_DB_URL` | `file:` + `KEEL_HOME/keel.db` | Use another database: another file, or `libsql://...` directly. Overrides `keel db connect` |
+| `KEEL_DB_TOKEN` | | Token for `KEEL_DB_URL`, or instead of the stored one |
+| `KEEL_BACKUP_KEEP` | `14` | How many daily backups to keep. `0` turns them off |
+| `KEEL_BACKUP_DIR` | a `backups` folder next to the database | Where daily backups go |
+| `KEEL_THEME` | | `light` or `dark`, overriding `theme` and detection |
+| `KEEL_PORT` | `4242` | Port for `keel serve` |
+| `KEEL_SECRET_STORE` | system keyring | `file` keeps tokens in a file only you can read (headless servers) |
+| `NO_COLOR` | | Plain output without colors |
+| `FORCE_COLOR` | | Colors even when output isn't a terminal |
+
+## How the CLI picks colors
+
+`KEEL_THEME`, then the saved `theme` setting, then `COLORFGBG`, then it asks your terminal for its background color, then dark. Output that isn't a terminal (a pipe or a file) has no colors unless `FORCE_COLOR` is set.

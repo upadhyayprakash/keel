@@ -1,0 +1,65 @@
+---
+title: "JSON output"
+description: "Add --json to any command for output that scripts can read."
+---
+
+Every command accepts `--json` and prints exactly one JSON object.
+
+<CodeGroup>
+
+```json Success
+{
+  "ok": true,
+  "data": {
+    "ref": "c1",
+    "direction": "owe",
+    "title": "send pricing deck",
+    "person": "ravi",
+    "personName": "Ravi",
+    "project": "acme/website",
+    "dueOn": "2026-10-15",
+    "status": "open",
+    "source": "other",
+    "tags": []
+  },
+  "text": "✓ c1 I owe Ravi · Thu 15 Oct · acme/website"
+}
+```
+
+```json Failure
+{
+  "ok": false,
+  "error": "Who do you owe it to? Add @name.",
+  "hint": "Example: owe send pricing deck @ravi due:thu"
+}
+```
+
+</CodeGroup>
+
+- `data` is the structured result: the commitment, project or list the command produced, or `null` if it has none.
+- `text` is what you'd see in the terminal, without colors.
+- On failure, Keel exits with code 1.
+
+## What data holds
+
+| Command | `data` |
+|---|---|
+| `owe`, `wait`, `done`, `drop`, `renegotiate`, `nudge`, `set c12` | The commitment |
+| `ls` | `{ commitments: [...] }`, or `{ inbox: [...] }` for `ls inbox` |
+| `today` | Date, project you're working on, focus, due and late, follow-ups, coming up, going quiet |
+| `show c12` | The commitment with its `history` |
+| `show p3` | The project with its resume note and open commitments |
+| `summary` | Kept, renegotiated, slipped, kept rate, minutes per client |
+| `help` | Every command with its usage and summary |
+
+## Rules for scripts
+
+- Commands that ask questions skip them in JSON mode. `switch acme/app --json` switches without a resume note.
+- Deleting never happens in JSON mode unless you also pass `--yes`.
+- `export` prints the export file itself, unwrapped, so `keel export > backup.json` works as a backup.
+- Field names are a public contract. Changes to them are noted in the [changelog](/changelog).
+
+```bash
+# Everything you're waiting on from Meera, as titles
+keel ls wait @meera --json | jq -r '.data.commitments[].title'
+```

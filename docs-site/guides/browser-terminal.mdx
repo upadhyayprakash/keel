@@ -1,0 +1,21 @@
+---
+title: "Browser terminal"
+description: "The same terminal in your browser, with autocomplete and a theme switch."
+---
+
+```bash
+keel serve
+```
+
+Open [http://localhost:4242](http://localhost:4242). It runs the same commands on the same data, and adds:
+
+- Suggestions as you type, the same ones as Tab in the shell.
+- A preview of a new commitment before you press Enter.
+- Clickable refs: click `c12` to see it.
+- A light, dark or auto theme switch at the bottom right.
+
+<Frame>
+  <img src="/images/keel-browser.png" alt="keel serve in the browser, showing today" />
+</Frame>
+
+It only listens on your own machine. Stop it with Ctrl+C. Use `--port 5000` (or `KEEL_PORT`) for another port.

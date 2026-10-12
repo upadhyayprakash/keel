@@ -16,7 +16,9 @@
     "build": "pnpm --filter @keel/web build && pnpm --filter @nouisi/keel build",
     "test": "pnpm -r test",
     "typecheck": "pnpm -r typecheck",
-    "db:generate": "pnpm --filter @keel/core db:generate"
+    "db:generate": "pnpm --filter @keel/core db:generate",
+    "docs:generate": "tsx docs-site/scripts/generate.ts",
+    "docs:dev": "cd docs-site && npx -y mint@latest dev"
   },
   "devDependencies": {
     "@types/node": "^20.19.0",

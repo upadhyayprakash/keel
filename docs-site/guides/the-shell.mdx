@@ -1,0 +1,36 @@
+---
+title: "The Keel shell"
+description: "One session where every line is a Keel command."
+---
+
+Run `keel` on its own (or `keel shell`):
+
+```bash
+keel
+```
+
+Keel shows its logo and your `today`, then waits at a prompt that shows the project you're working on, in its client's color:
+
+```text
+acme/website › owe send pricing deck @ravi due:thu
+✓ c1 I owe Ravi · Thu 15 Oct · acme/website
+```
+
+## What you can do
+
+| Key or command | Does |
+|---|---|
+| Any Keel command | Runs it, without the `keel` prefix |
+| Tab | Completes commands, `@people`, `+projects`, refs and `due:` dates |
+| ↑ / ↓ | Earlier commands, kept between sessions |
+| Ctrl+C | Cancels the line or the current question |
+| Ctrl+L, or `clear` | Clears the screen |
+| `exit`, or Ctrl+D | Leaves the shell |
+
+Commands that ask questions, such as `switch` and `meeting`, ask them right there in the shell.
+
+`serve`, `db` and `completion` run from your normal terminal instead, since they start servers or change where your data lives.
+
+<Tip>
+History lives in `~/.keel/history`, readable only by you.
+</Tip>

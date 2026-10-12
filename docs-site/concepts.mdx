@@ -1,0 +1,27 @@
+---
+title: "The ideas behind Keel"
+description: "Clients, projects, the project you're working on, commitments, refs and resume notes."
+---
+
+| Word | What it means |
+|---|---|
+| **Client** | Who the work is for, or a whole area of your life: `acme`, `northwind`, `personal`. It groups projects. |
+| **Project** | One piece of work under a client, written `client/project`: `acme/website`. |
+| **Working on** | The project you're in right now: zero or one. New items land in it unless you name another project. Your first project becomes it automatically; `switch` changes it and `park` clears it. |
+| **Commitment** | A promise with a person and a due date. **owe** is something you promised someone; **wait** is something someone promised you. |
+| **Inbox** | Anything you haven't decided about yet. Sort it later with `triage`. |
+| **Focus** | Up to three commitments you pick for today. |
+| **Resume note** | Three short answers saved when you leave a project: where you are, what's next, what you're unsure about. Shown when you come back. |
+| **Ref** | The short name of an item: `c12` is a commitment, `p3` a project, `i5` an inbox item. Use refs in commands: `done c12`. |
+
+## Clients for every area
+
+Use clients for every area you juggle, not only paying ones: `client new personal "Personal"` with `personal/job-search`, or `client new oss "Open source"` with `oss/keel`. The weekly summary shows your time per client, so this gives an honest picture of where your week went.
+
+## Renegotiated is not slipped
+
+When you agree a new date with the other person, use `renegotiate c12 due:mon`. In the weekly summary it counts toward your kept rate. Moving a date with `set c12 due:mon` is logged as a silent move instead. The difference is the point: renegotiating early is good practice, slipping quietly is not.
+
+## One command language, two terminals
+
+Every command works the same in the `keel` CLI, the Keel shell, and the browser terminal (`keel serve`). They share one core, one database and one completer.

@@ -27,6 +27,10 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm test
       - run: pnpm build
+      - name: Docs site matches the code
+        run: |
+          pnpm docs:generate
+          git diff --exit-code -- docs-site || { echo "Run pnpm docs:generate and commit the result."; exit 1; }
       - name: Install the npm package and run it
         run: |
           cd apps/cli && pnpm pack --pack-destination "$RUNNER_TEMP"
