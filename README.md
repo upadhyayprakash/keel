@@ -1,10 +1,22 @@
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/brand/keel-wordmark-dark.svg">
+    <img src="assets/brand/keel-wordmark.svg" alt="keel" height="64">
+  </picture>
+</p>
+
+<p align="center">
+  <a href="https://github.com/OWNER/keel/actions/workflows/ci.yml"><img src="https://github.com/OWNER/keel/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="MIT license"></a>
+</p>
+
 # Keel
 
 A personal app for tracking promises, priorities, project context and decisions, so nothing promised is missed and focus stays on what matters. Built for people who juggle several clients and projects in the same week.
 
 The name: a keel keeps a boat steady and on course. Keel does the same for the day: steady focus, kept promises, sound decisions.
 
-Status: early development (v0.1). The CLI and the browser terminal work locally; see the roadmap in the spec.
+Status: early development (v0.1). The CLI and the browser terminal work locally, including meeting capture, triage, the weekly review and summaries. See the roadmap in the spec.
 
 ## What it will do
 

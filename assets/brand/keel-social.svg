@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 640" role="img" aria-label="keel: promises, priorities and project context, in your terminal">
+<rect width="1280" height="640" fill="#0B1220"/>
+<g transform="translate(340 150) scale(5)" fill="none" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19 L13 29 L4 39" stroke="#FB923C"/><g stroke="#F8FAFC"><path d="M25 4 V40 M39 17 L25 31 M30 26 L40 40"/><path d="M51 29 H73 A11 11 0 1 0 69.8 36.8"/><path d="M83 29 H105 A11 11 0 1 0 101.8 36.8"/><path d="M115 4 V40"/></g></g>
+<text x="640" y="450" text-anchor="middle" font-family="JetBrains Mono, Menlo, monospace" font-size="34" fill="#94A3B8">steady focus · kept promises · sound decisions</text>
+</svg>

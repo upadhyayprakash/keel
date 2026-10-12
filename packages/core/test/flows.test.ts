@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { Keel } from '../src/keel';
+import type { Keel } from '../src/keel';
 import { renderText } from '../src/render-text';
+import { openTestKeel } from './helpers';
 
 // Monday 12 October 2026, 09:00 local time.
 let now: Date;
@@ -26,7 +27,7 @@ async function play(line: string, answers: Array<string | null>) {
 
 beforeEach(async () => {
   now = new Date(2026, 9, 12, 9, 0);
-  keel = await Keel.open({ url: ':memory:', now: () => now });
+  keel = await openTestKeel(() => now);
   await run('client new acme "Acme Corp"');
   await run('client new northwind Northwind');
   await run('project new acme/website "Website rebuild"');

@@ -1,0 +1,64 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: Typecheck, test, build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm build
+
+  # Turso-ready rule 9: the core tests also run on a database file and on a
+  # libSQL server, so anything that only breaks remotely shows up before v2.
+  storage:
+    name: Core tests on ${{ matrix.target }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [file, libsql-server]
+    services:
+      sqld:
+        image: ghcr.io/tursodatabase/libsql-server:latest
+        ports:
+          - 8080:8080
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Wait for the libSQL server
+        if: matrix.target == 'libsql-server'
+        run: |
+          for i in $(seq 1 30); do
+            curl -sf http://127.0.0.1:8080/health && exit 0
+            sleep 1
+          done
+          echo "libSQL server did not start" && exit 1
+      - name: Run core tests
+        env:
+          KEEL_TEST_DB_URL: ${{ matrix.target == 'file' && format('file:{0}/keel-test.db', runner.temp) || 'http://127.0.0.1:8080' }}
+        run: pnpm --filter @keel/core test
