@@ -72,4 +72,6 @@ jobs:
       - name: Run core tests
         env:
           KEEL_TEST_DB_URL: ${{ matrix.target == 'file' && format('file:{0}/keel-test.db', runner.temp) || 'http://127.0.0.1:8080' }}
+          # ADR 0001: two synced copies talking through the server (skipped on the file target).
+          KEEL_TEST_SYNC_URL: ${{ matrix.target == 'libsql-server' && 'http://127.0.0.1:8080' || '' }}
         run: pnpm --filter @keel/core test

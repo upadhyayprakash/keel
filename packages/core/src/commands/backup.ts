@@ -65,41 +65,7 @@ export const importCommand: Command = {
     } catch {
       throw new KeelError(`Can't read ${file}.`);
     }
-    const dump = parseExport(text);
-
-    // Restoring never overwrites: it only fills an empty database.
-    for (const name of ['clients', 'projects', 'people', 'commitments', 'inboxItems', 'resumeNotes'] as const) {
-      const table = TABLES[name] as typeof t.clients;
-      if ((await k.db.select({ id: table.id }).from(table).limit(1)).length) {
-        throw new KeelError(
-          'This database already has data. Import only fills an empty one, so nothing gets overwritten.',
-          'Import into a new database: KEEL_DB_URL=file:/path/to/new.db keel import backup.json',
-        );
-      }
-    }
-
-    const queries = [];
-    const counts: Partial<Record<TableName, number>> = {};
-    for (const [name, table] of Object.entries(TABLES) as Array<[TableName, typeof t.clients]>) {
-      const rows = dump[name] ?? [];
-      counts[name] = rows.length;
-      for (let i = 0; i < rows.length; i += CHUNK) {
-        const chunk = rows.slice(i, i + CHUNK) as Array<typeof t.clients.$inferInsert>;
-        queries.push(
-          name === 'settings'
-            ? k.db
-                .insert(t.settings)
-                .values(chunk as unknown as Array<typeof t.settings.$inferInsert>)
-                .onConflictDoUpdate({ target: t.settings.key, set: { value: sql`excluded.value`, updatedAt: sql`excluded.updated_at` } })
-            : k.db.insert(table).values(chunk),
-        );
-      }
-    }
-    try {
-      await k.batch(queries); // one batch, so a bad file saves nothing
-    } catch (e) {
-      throw new KeelError(`Import failed and nothing was saved: ${e instanceof Error ? e.message : String(e)}`);
-    }
+    const counts = await importDump(k, parseExport(text));
 
     const label = (n: number | undefined, one: string, many = `${one}s`) => `${n ?? 0} ${n === 1 ? one : many}`;
     return [
@@ -122,7 +88,64 @@ export const importCommand: Command = {
   },
 };
 
-function parseExport(text: string): Partial<Record<TableName, Row[]>> {
+export type ExportCounts = Partial<Record<TableName, number>>;
+
+/** Rows that make a database "have data" (settings alone don't count). */
+const CONTENT = ['clients', 'projects', 'people', 'commitments', 'inboxItems', 'resumeNotes'] as const;
+
+/** How many live rows each content table holds. */
+export async function contentCounts(k: Store): Promise<Record<(typeof CONTENT)[number], number>> {
+  const out = {} as Record<(typeof CONTENT)[number], number>;
+  for (const name of CONTENT) {
+    const table = TABLES[name] as typeof t.clients;
+    out[name] = (await k.db.select({ id: table.id }).from(table)).length;
+  }
+  return out;
+}
+
+export async function isEmpty(k: Store): Promise<boolean> {
+  return Object.values(await contentCounts(k)).every((n) => n === 0);
+}
+
+/**
+ * Writes a parsed export into an empty database, in one batch so a bad file
+ * saves nothing. Used by `import` and by `keel db connect` to copy data up.
+ */
+export async function importDump(k: Store, dump: Partial<Record<TableName, Row[]>>): Promise<ExportCounts> {
+  // Restoring never overwrites: it only fills an empty database.
+  if (!(await isEmpty(k))) {
+    throw new KeelError(
+      'This database already has data. Import only fills an empty one, so nothing gets overwritten.',
+      'Import into a new database: KEEL_DB_URL=file:/path/to/new.db keel import backup.json',
+    );
+  }
+  const queries = [];
+  const counts: ExportCounts = {};
+  for (const [name, table] of Object.entries(TABLES) as Array<[TableName, typeof t.clients]>) {
+    const rows = dump[name] ?? [];
+    counts[name] = rows.length;
+    for (let i = 0; i < rows.length; i += CHUNK) {
+      const chunk = rows.slice(i, i + CHUNK) as Array<typeof t.clients.$inferInsert>;
+      queries.push(
+        name === 'settings'
+          ? k.db
+              .insert(t.settings)
+              .values(chunk as unknown as Array<typeof t.settings.$inferInsert>)
+              .onConflictDoUpdate({ target: t.settings.key, set: { value: sql`excluded.value`, updatedAt: sql`excluded.updated_at` } })
+          : k.db.insert(table).values(chunk),
+      );
+    }
+  }
+  try {
+    await k.batch(queries);
+  } catch (e) {
+    if (e instanceof KeelError) throw e;
+    throw new KeelError(`Import failed and nothing was saved: ${e instanceof Error ? e.message : String(e)}`);
+  }
+  return counts;
+}
+
+export function parseExport(text: string): Partial<Record<TableName, Row[]>> {
   let parsed: unknown;
   try {
     parsed = JSON.parse(text);

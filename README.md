@@ -60,6 +60,7 @@ echo 'eval "$(keel completion zsh)"' >> ~/.zshrc     # or: keel completion bash 
 ## Your data
 
 - It lives in `~/.keel/keel.db`. Change it with `KEEL_DB_URL` (see `.env.example`).
+- Use it on several devices: `keel db connect libsql://<your-database>` keeps a synced copy on each one ([guide](docs/get-started.md#use-keel-on-several-devices), [ADR 0001](docs/adr/0001-multi-device-sync.md)).
 - Keel writes a full JSON backup to `~/.keel/backups/` once a day and keeps the last 14 (`KEEL_BACKUP_KEEP`, `0` turns it off).
 - `keel export > keel-backup.json` exports everything, `keel import keel-backup.json` restores it into an empty database, and `keel export --md` gives a readable snapshot.
 - Add `--json` to any command for machine-readable output.

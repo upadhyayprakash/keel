@@ -4,7 +4,8 @@ import { fail, hint, s, warn, type Block, type RunResult, type Span, type Tone }
 import { readCommitment } from './commands/capture';
 import { expand, findCommand, type Command, type Flow } from './commands/index';
 import { formatDay } from './dates';
-import { migrateDb, openDb } from './db/client';
+import { existsSync } from 'node:fs';
+import { isConnectionError, migrateDb, openDb } from './db/client';
 import * as t from './db/schema';
 import { KeelError } from './errors';
 import type { ThemeSetting } from './palettes';
@@ -15,9 +16,11 @@ import { Store } from './store';
 import { VERSION } from './version';
 
 export interface KeelOptions {
-  /** `file:/path/keel.db`, `:memory:`, or (v2) `libsql://...` */
+  /** `file:/path/keel.db`, `:memory:`, or `libsql://...` */
   url: string;
   authToken?: string;
+  /** With a `file:` url: keep it as a synced copy of this hosted database (ADR 0001). */
+  syncUrl?: string;
   /** Override the clock (tests). */
   now?: () => Date;
 }
@@ -27,11 +30,21 @@ export interface KeelState {
   counts: { overdue: number; today: number; waiting: number };
   theme: ThemeSetting;
   version: string;
-  /** `local` for a file or memory database, `remote` for a libSQL server or Turso. */
-  storage: 'local' | 'remote';
+  storage: Storage;
 }
 
+/**
+ * `local`: a file or memory database. `remote`: talking to a hosted database directly.
+ * `synced`: a local copy kept in sync with a hosted one. `offline`: synced, but the
+ * hosted database was unreachable when Keel opened, so changes can't be saved.
+ */
+export type Storage = 'local' | 'remote' | 'synced' | 'offline';
+
+const SYNC_EVERY_MS = 10_000;
+
 export type { Completion, Suggestion } from './complete';
+
+const hostOf = (url: string) => url.replace(/^[a-z]+:\/\//, '').split('/')[0];
 
 function errorBlocks(e: unknown): Block[] {
   if (e instanceof KeelError) return [fail(e.message), ...(e.hint ? [hint(e.hint)] : [])];
@@ -40,17 +53,52 @@ function errorBlocks(e: unknown): Block[] {
 
 /** One Keel instance per database. Both terminals talk to it through `run`. */
 export class Keel {
+  private lastSync = Date.now();
+
   private constructor(
     readonly store: Store,
     private client: LibsqlClient,
-    readonly storage: 'local' | 'remote',
+    readonly storage: Storage,
   ) {}
 
   static async open(opts: KeelOptions): Promise<Keel> {
+    const now = opts.now ?? (() => new Date());
+    if (opts.syncUrl) {
+      try {
+        // Opening a synced copy pulls the latest changes first.
+        const { db, client } = openDb(opts);
+        await migrateDb(db);
+        return new Keel(new Store(db, now), client, 'synced');
+      } catch (e) {
+        if (!isConnectionError(e)) throw e;
+        // Offline: read this device's copy directly, and refuse writes.
+        const path = opts.url.replace(/^file:/, '');
+        if (!existsSync(path)) {
+          throw new KeelError(`Can't reach ${hostOf(opts.syncUrl)}, and this device has no copy of your data yet.`, 'Connect to the internet and try again.');
+        }
+        const { db, client } = openDb({ url: opts.url });
+        return new Keel(new Store(db, now, true), client, 'offline');
+      }
+    }
     const { db, client } = openDb({ url: opts.url, authToken: opts.authToken });
     await migrateDb(db);
     const storage = opts.url.startsWith('file:') || opts.url === ':memory:' ? 'local' : 'remote';
-    return new Keel(new Store(db, opts.now ?? (() => new Date())), client, storage);
+    return new Keel(new Store(db, now), client, storage);
+  }
+
+  /** Pulls changes made on other devices. A no-op unless synced; never throws. */
+  async sync(): Promise<void> {
+    if (this.storage !== 'synced') return;
+    try {
+      await this.client.sync();
+      this.lastSync = Date.now();
+    } catch {
+      // Offline for now; reads use the local copy and writes report it.
+    }
+  }
+
+  private async syncIfStale(): Promise<void> {
+    if (this.storage === 'synced' && Date.now() - this.lastSync > SYNC_EVERY_MS) await this.sync();
   }
 
   close(): void {
@@ -62,6 +110,7 @@ export class Keel {
 
   /** Starts a command. If it asks a question, the result carries `question` and `session`. */
   async exec(input: string): Promise<RunResult> {
+    await this.syncIfStale();
     let tokens = tokenize(input.trim());
     if (tokens[0]?.text === 'keel') tokens = tokens.slice(1);
     if (tokens.length === 0) return { blocks: await findCommand('help')!.run!(this.store, classify([])) };

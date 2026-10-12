@@ -43,7 +43,7 @@ The [Get started guide](https://github.com/upadhyayprakash/keel/blob/main/docs/g
 
 ## Your data
 
-Data lives in `~/.keel/keel.db`. Set `KEEL_DB_URL` to use another file. Keel saves a daily JSON backup in `~/.keel/backups` and keeps the last 14.
+Data lives in `~/.keel/keel.db`. Set `KEEL_DB_URL` to use another file. To use Keel on several devices, `keel db connect libsql://<your-database>` keeps a synced copy on each (Turso or any libSQL server); the token goes in your Keychain. Keel saves a daily JSON backup in `~/.keel/backups` and keeps the last 14.
 
 ```sh
 keel export > keel-backup.json      # everything, as JSON

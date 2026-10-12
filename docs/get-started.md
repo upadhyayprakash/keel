@@ -210,6 +210,38 @@ keel person merge @rav @ravi                # fix a typo'd handle: move everythi
 
 Deleting always shows what goes with it and asks you to type the name to confirm. Deleted items disappear from Keel, but your daily backups from before still have them.
 
+## Use Keel on several devices
+
+Keel can keep the same data on your work laptop and your personal one. Each device keeps a local copy, synced with one hosted database ([Turso](https://turso.tech) has a free tier, and any libSQL server works). Commands stay as fast as before, and reading works offline.
+
+**On your first device**
+
+1. Create a database and a token for it: in the Turso dashboard, or with `turso db create keel` and `turso db tokens create keel`.
+2. Connect:
+
+```sh
+keel db connect libsql://keel-<you>.turso.io
+```
+
+3. Paste the token when asked (it isn't shown as you type). Keel offers to copy your data to the hosted database, checks the copy, and stores the token in your macOS Keychain (or the system keyring on Linux), never in a file you'd share.
+
+**On every other device**
+
+```sh
+npm install -g @nouisi/keel
+keel db connect libsql://keel-<you>.turso.io
+```
+
+Paste the same token, and confirm using the hosted data. If that device already had Keel data of its own, Keel saves it to a backup file first; it never mixes the two.
+
+**Good to know**
+
+- `keel db` shows where your data lives, whether you're online, and where the token is kept. It never prints the token.
+- Offline, `today`, `ls` and `show` keep working. Changes say "You're offline, so this wasn't saved", so nothing is lost silently.
+- Changes from your other devices arrive when you run a command (Keel checks every few seconds) and every 30 seconds in the browser terminal.
+- `keel db disconnect` stops syncing on this device and keeps a full local copy. The hosted database stays as it is.
+- Lost a laptop? Create a new token for the database (which invalidates the old one) and run `keel db connect` again on the devices you still have.
+
 ## Cheat sheet
 
 | Command | Does |
@@ -231,6 +263,7 @@ Deleting always shows what goes with it and asks you to type the name to confirm
 | `client rename\|archive\|delete` · `project delete` | Tidy up |
 | `people` · `person rename\|merge` | People and their names |
 | `serve` | Browser terminal |
+| `db` · `db connect <address>` · `db disconnect` | Where your data lives, and syncing it across devices |
 | `help` | Everything else |
 
 ## Update or uninstall

@@ -2,21 +2,19 @@ import { mkdirSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { createInterface } from 'node:readline/promises';
-import { autoBackup, Keel, VERSION, type AutoBackupOptions } from '@keel/core';
+import { autoBackup, fail, hint, Keel, KeelError, renderText, VERSION, type AutoBackupOptions } from '@keel/core';
+import { dbConnect, dbDisconnect, dbStatus, storageOptions, terminalIo } from './db';
 import { completionScript, formatSuggestions, isShell } from './completion';
 import { runCommand } from './run';
 import { questionAsker, runShell } from './shell';
 import { ansiPaint, argvToLine, banner, needsProbe, probeBackground, resolveTheme, useColor } from './terminal';
 
-function databaseUrl(): string {
-  const url = process.env.KEEL_DB_URL || `file:${join(homedir(), '.keel', 'keel.db')}`;
-  if (url.startsWith('file:')) mkdirSync(dirname(url.slice('file:'.length)), { recursive: true });
-  return url;
-}
+/** Keel's folder: database, synced copy, config, backups, history. `KEEL_HOME` moves it. */
+const HOME = process.env.KEEL_HOME || join(homedir(), '.keel');
 
-/** Keel's own folder: next to the database file, or ~/.keel for a remote one. */
+/** Where backups and history go: next to a database file, or Keel's folder for a remote one. */
 function keelHome(url: string): string {
-  return url.startsWith('file:') ? dirname(url.slice('file:'.length)) : join(homedir(), '.keel');
+  return url.startsWith('file:') ? dirname(url.slice('file:'.length)) : HOME;
 }
 
 /** Daily backups go in a backups folder in Keel's own folder. */
@@ -53,8 +51,28 @@ async function main(): Promise<number> {
     return 0;
   }
 
-  const url = databaseUrl();
-  const keel = await Keel.open({ url, authToken: process.env.KEEL_DB_TOKEN || undefined });
+  mkdirSync(HOME, { recursive: true });
+
+  // keel db: where this device's data lives, and syncing it with a hosted database (ADR 0001).
+  if (args[0] === 'db') {
+    const color = useColor(process.env, Boolean(process.stdout.isTTY));
+    const io = terminalIo(color ? ansiPaint(resolveTheme(process.env, null)) : (text) => text, color);
+    try {
+      if (!args[1]) return await dbStatus(HOME, io);
+      if (args[1] === 'connect') return await dbConnect(HOME, args[2], io);
+      if (args[1] === 'disconnect') return await dbDisconnect(HOME, io);
+      throw new KeelError(`Unknown "db ${args[1]}".`, 'Try: keel db, keel db connect <address>, keel db disconnect');
+    } catch (e) {
+      if (!(e instanceof KeelError)) throw e;
+      io.print([fail(e.message), ...(e.hint ? [hint(e.hint)] : [])]);
+      return 1;
+    }
+  }
+
+  const storage = await storageOptions(HOME);
+  const url = storage.url;
+  if (url.startsWith('file:')) mkdirSync(dirname(url.slice('file:'.length)), { recursive: true });
+  const keel = await Keel.open(storage);
 
   try {
     // Called by the shell on every Tab: answer fast, print nothing else.
@@ -69,6 +87,7 @@ async function main(): Promise<number> {
     if (args[0] === 'serve') {
       await backup(keel, url);
       setInterval(() => void backup(keel, url), 60 * 60 * 1000); // a long-running server still rolls over at midnight
+      setInterval(() => void keel.sync(), 30 * 1000); // pick up changes from other devices
       const { startServer } = await import('@keel/server');
       const portArg = args.indexOf('--port');
       const port = Number(portArg >= 0 ? args[portArg + 1] : process.env.KEEL_PORT || 4242);
@@ -117,6 +136,10 @@ async function main(): Promise<number> {
 main().then(
   (code) => process.exit(code),
   (error: unknown) => {
+    if (error instanceof KeelError) {
+      process.stderr.write(renderText([fail(error.message), ...(error.hint ? [hint(error.hint)] : [])]) + '\n');
+      process.exit(1);
+    }
     console.error(error instanceof Error ? error.message : error);
     process.exit(2);
   },

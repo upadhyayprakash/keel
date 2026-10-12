@@ -96,6 +96,7 @@ The browser terminal accepts **exactly the same commands as the CLI**; the `keel
 | `keel theme [light\|dark\|auto]` | Pick the color theme (see section 4) |
 | `keel` (or `keel shell`) | Open the Keel shell: commands without the `keel` prefix, Tab completion, history, `exit` to leave |
 | `keel serve` | Start the browser terminal on localhost |
+| `keel db`, `keel db connect <address>`, `keel db disconnect` | Show where data lives; sync this device with a hosted libSQL database, or stop (ADR 0001) |
 | `keel export [--json\|--md]` | Export everything: JSON to back up or move, Markdown to read. Your data is always yours |
 | `keel import <file.json>` | Restore a JSON export into an empty database, in one batch (a bad file saves nothing) |
 | `keel completion zsh\|bash` | Shell tab completion for people, projects, refs and dates |

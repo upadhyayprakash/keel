@@ -2,7 +2,7 @@ import { and, asc, desc, eq, isNull, sql, type SQL } from 'drizzle-orm';
 import { ulid } from 'ulidx';
 import type { Tone } from './blocks';
 import { ymd } from './dates';
-import type { Db } from './db/client';
+import { isConnectionError, type Db } from './db/client';
 import * as t from './db/schema';
 import { KeelError } from './errors';
 import type { Parsed } from './parse';
@@ -33,10 +33,14 @@ export interface CommitmentView {
 type Query = any;
 
 /** Data access for commands. Every call is async and writes go through batch() (Turso-ready rules 3 and 4). */
+export const OFFLINE = new KeelError("You're offline, so this wasn't saved.", "Reading still works from this device's copy. Try again when you're back online.");
+
 export class Store {
   constructor(
     public db: Db,
     public now: () => Date,
+    /** Synced, but the hosted database couldn't be reached when Keel opened: reads only. */
+    public offline = false,
   ) {}
 
   newId = () => ulid();
@@ -49,7 +53,13 @@ export class Store {
 
   async batch(queries: Query[]): Promise<void> {
     if (queries.length === 0) return;
-    await this.db.batch(queries as [Query, ...Query[]]);
+    if (this.offline) throw OFFLINE;
+    try {
+      await this.db.batch(queries as [Query, ...Query[]]);
+    } catch (e) {
+      if (isConnectionError(e)) throw OFFLINE;
+      throw e;
+    }
   }
 
   // ---- settings ----
