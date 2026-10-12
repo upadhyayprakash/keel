@@ -1,6 +1,6 @@
 # 0001. Multi-device: a synced local replica of a hosted libSQL database
 
-- **Status:** Proposed
+- **Status:** Accepted (2026-10-12)
 - **Date:** 2026-10-12
 - **Target release:** 0.3.0
 
@@ -115,8 +115,10 @@ Adopt **option B**, with these product rules:
 
 Opening the browser terminal from another device over the internet (a phone, a borrowed computer). That needs a login, and belongs with the authentication decision, which will get its own record.
 
-## Open questions
+## Resolved questions
 
-1. Confirm option B over option A (local speed and offline reads, versus the simplest possible setup).
-2. Confirm that refusing offline writes is acceptable for 0.3.0.
-3. Confirm paste-the-URL-and-token as the connect step, with a friendlier pairing code as a later improvement.
+Settled with the owner on 2026-10-12, as recommended above:
+
+1. **Option B** (synced local replica) over option A (always remote): local speed and offline reads matter more than the simplest setup.
+2. **Offline writes are refused clearly** in 0.3.0. Offline writes can come later, in a new record.
+3. **Connect by pasting the URL and token.** A friendlier pairing code can come later.
