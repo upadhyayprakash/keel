@@ -16,9 +16,19 @@ A personal app for tracking promises, priorities, project context and decisions,
 
 The name: a keel keeps a boat steady and on course. Keel does the same for the day: steady focus, kept promises, sound decisions.
 
-Status: early development (v0.1). The CLI and the browser terminal work locally, including meeting capture, triage, the weekly review and summaries. See the roadmap in the spec.
+<p align="center">
+  <img src="assets/brand/png/keel-cli-welcome.png" alt="The keel command in a terminal: the hull-and-keel logo, the KEEL wordmark and the five main commands" width="560">
+</p>
+<p align="center"><em>In your terminal (dark theme)</em></p>
 
-## What it will do
+<p align="center">
+  <img src="assets/brand/png/keel-browser.png" alt="keel serve in the browser, showing today: focus, waiting-on follow-ups and what's coming up" width="820">
+</p>
+<p align="center"><em>The same terminal in your browser with <code>keel serve</code> (light theme)</em></p>
+
+Status: v0.1.0 is on npm as [`@nouisi/keel`](https://www.npmjs.com/package/@nouisi/keel). See the [changelog](CHANGELOG.md) and the roadmap in the spec.
+
+## What it does
 
 - **Commitments:** "I owe" and "Waiting on", each with a person and a due date.
 - **Today:** at most 3 priorities, plus anything due or overdue.

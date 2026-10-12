@@ -49,3 +49,9 @@ rsvg-convert -h 352 keel-wordmark.svg -o png/keel-wordmark@4x.png
 rsvg-convert -w 512 -h 512 keel-icon.svg -o png/keel-icon-512.png
 rsvg-convert -w 1280 -h 640 keel-social.svg -o png/keel-social.png
 ```
+
+The README screenshots (`png/keel-cli-welcome.png`, `png/keel-browser.png`) come from the real CLI and browser terminal, with fictional sample data. After `pnpm build`, from the repo root (needs Google Chrome):
+
+```bash
+node assets/brand/render-cli.mjs
+```

@@ -4,6 +4,16 @@ Keep your promises, priorities and project context in one terminal.
 
 Keel tracks what you owe people and what you're waiting on, keeps today's focus to three things, and remembers where you left each project when you switch. It runs in your terminal, and the same terminal opens in your browser with `keel serve`. Your data stays in a local SQLite file.
 
+<p align="center">
+  <img src="https://raw.githubusercontent.com/upadhyayprakash/keel/main/assets/brand/png/keel-cli-welcome.png" alt="The keel command in a terminal: the hull-and-keel logo, the KEEL wordmark and the five main commands" width="560">
+</p>
+<p align="center"><em>In your terminal (dark theme)</em></p>
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/upadhyayprakash/keel/main/assets/brand/png/keel-browser.png" alt="keel serve in the browser, showing today: focus, waiting-on follow-ups and what's coming up" width="820">
+</p>
+<p align="center"><em>The same terminal in your browser with <code>keel serve</code> (light theme)</em></p>
+
 ## Install
 
 ```sh
