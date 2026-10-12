@@ -1,5 +1,5 @@
 import { and, eq, gte, lt } from 'drizzle-orm';
-import { blank, heading, hint, line, s, table, type Bar, type Block, type Span } from '../blocks';
+import { blank, data, heading, hint, line, s, table, type Bar, type Block, type Span } from '../blocks';
 import { addDays, dayStartIso, formatDay, formatRange, isoWeek, weekStart, ymd } from '../dates';
 import * as t from '../db/schema';
 import { KeelError } from '../errors';
@@ -133,6 +133,22 @@ export async function summaryBlocks(k: Store, kind: PeriodKind, scope?: string):
   } else {
     out.push(blank(), hint('No time logged yet. Time comes from switch, so it fills in as you move between projects.'));
   }
+  out.push(
+    data({
+      period: { kind, from: period.from, to: period.to },
+      scope: scope ?? null,
+      kept: st.kept,
+      renegotiated: st.renegotiated,
+      slipped: st.slipped,
+      received: st.received,
+      waiting: st.waiting,
+      keptRate: st.rate,
+      lastWeekKeptRate: previous?.rate ?? null,
+      minutesByClient: Object.fromEntries([...st.minutesByClient].map(([slug, v]) => [slug, Math.round(v.minutes)])),
+      switches: st.switches,
+      resumeNotes: st.notes,
+    }),
+  );
   return out;
 }
 

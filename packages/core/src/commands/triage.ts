@@ -1,5 +1,5 @@
 import { eq } from 'drizzle-orm';
-import { blank, fail, hint, line, ok, s, type Block } from '../blocks';
+import { blank, data, fail, hint, line, ok, s, type Block } from '../blocks';
 import * as t from '../db/schema';
 import { KeelError } from '../errors';
 import { classify, tokenize } from '../parse';
@@ -12,7 +12,7 @@ const TRIAGE_HINT = 'owe @who due:<when> · wait @who due:<when> · keep · drop
 /** Walks the open inbox. Also step 1 of the weekly review. */
 export async function* triageFlow(k: Store): Flow {
   const items = await k.openInbox();
-  if (items.length === 0) return [hint('Inbox is empty.')];
+  if (items.length === 0) return [hint('Inbox is empty.'), data({ commitments: 0, kept: 0, dropped: 0, skipped: 0 })];
   const projects = new Map((await k.listProjects()).map((pv) => [pv.project.id, pv]));
   const tally = { commitments: 0, kept: 0, dropped: 0, skipped: 0 };
   let blocks: Block[] = [];
@@ -79,6 +79,7 @@ export async function* triageFlow(k: Store): Flow {
     ...blocks,
     blank(),
     ok(`Inbox: ${tally.commitments} turned into commitments, ${tally.kept} kept, ${tally.dropped} dropped, ${tally.skipped} skipped.`),
+    data({ ...tally }),
   ];
 }
 

@@ -1,6 +1,7 @@
 import { inbox, owe, wait } from './capture';
 import { done, drop, focus, nudge, renegotiate, set } from './edit';
-import { exportCommand, helpCommand, theme } from './misc';
+import { exportCommand, importCommand } from './backup';
+import { helpCommand, theme } from './misc';
 import { meeting } from './meeting';
 import { client, park, project, switchCommand } from './projects';
 import { review } from './review';
@@ -37,6 +38,7 @@ list.push(
   project,
   theme,
   exportCommand,
+  importCommand,
   help,
 );
 

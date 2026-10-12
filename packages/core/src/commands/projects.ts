@@ -1,12 +1,12 @@
 import { and, eq, isNull } from 'drizzle-orm';
-import { blank, heading, hint, line, ok, s, table, warn, type Block } from '../blocks';
+import { blank, data, heading, hint, line, ok, s, table, warn, type Block } from '../blocks';
 import { dayDiff } from '../dates';
 import * as t from '../db/schema';
 import { KeelError } from '../errors';
 import { CLIENT_HUES } from '../palettes';
 import type { Parsed } from '../parse';
 import type { ProjectView, Store } from '../store';
-import { commitmentRow, projectSpan, type Command, type Flow } from './shared';
+import { commitmentData, commitmentRow, noteData, projectData, projectSpan, type Command, type Flow } from './shared';
 import { noteBlock } from './views';
 
 const SLUG = /^[a-z0-9][a-z0-9-]*$/;
@@ -32,23 +32,29 @@ export const client: Command = {
       k.db.insert(t.clients).values({ id, ...k.stamps(), slug, name, color }),
       k.event('client', id, 'created'),
     ]);
-    return [ok([s('client '), s(slug, color, { bold: true }), s(` created · ${name}`)]), hint(`Next: project new ${slug}/<project> "Name"`)];
+    return [
+      ok([s('client '), s(slug, color, { bold: true }), s(` created · ${name}`)]),
+      hint(`Next: project new ${slug}/<project> "Name"`),
+      data({ id, slug, name }),
+    ];
   },
 };
 
 async function listClients(k: Store): Promise<Block[]> {
   const clients = await k.listClients();
-  if (clients.length === 0) return [hint('No clients yet. Add one: client new acme "Acme Corp"')];
+  if (clients.length === 0) return [hint('No clients yet. Add one: client new acme "Acme Corp"'), data({ clients: [] })];
   const projects = await k.listProjects();
+  const count = (id: string) => projects.filter((pv) => pv.client.id === id).length;
   return [
     heading(`CLIENTS · ${clients.length}`),
     table(
       clients.map((c) => [
         s(c.slug, c.color as Parameters<typeof s>[1], { bold: true }),
         s(c.name),
-        s(`${projects.filter((pv) => pv.client.id === c.id).length} projects`, 'muted'),
+        s(`${count(c.id)} projects`, 'muted'),
       ]),
     ),
+    data({ clients: clients.map((c) => ({ id: c.id, slug: c.slug, name: c.name, projects: count(c.id) })) }),
   ];
 }
 
@@ -90,13 +96,14 @@ export const project: Command = {
     return [
       ok([s(`p${refNo}`, 'default', { bold: true, ref: `p${refNo}` }), s(' '), projectSpan(view), s(` created · ${name}`)]),
       hint(hadContext ? `Work on it with: switch ${view.path}` : `Context set to ${view.path}. New items land here.`),
+      data(projectData((await k.projectByRef(refNo))!)),
     ];
   },
 };
 
 async function listProjects(k: Store): Promise<Block[]> {
   const projects = await k.listProjects();
-  if (projects.length === 0) return [hint('No projects yet. Add one: project new acme/website "Website rebuild"')];
+  if (projects.length === 0) return [hint('No projects yet. Add one: project new acme/website "Website rebuild"'), data({ projects: [] })];
   const ctx = await k.getSetting('context');
   return [
     heading(`PROJECTS · ${projects.length}`),
@@ -109,6 +116,7 @@ async function listProjects(k: Store): Promise<Block[]> {
         s(pv.project.status, pv.project.status === 'active' ? 'muted' : 'today'),
       ]),
     ),
+    data({ projects: projects.map((pv) => ({ ...projectData(pv), current: pv.project.id === ctx })) }),
   ];
 }
 
@@ -155,7 +163,7 @@ export const switchCommand: Command = {
     if (!path) throw new KeelError('Switch to which project?', 'Example: switch acme/website');
     const target = await k.projectByPath(path.replace(/^\+/, ''));
     const leaving = await k.contextProject();
-    if (leaving?.project.id === target.project.id) return [warn(`Already in ${target.path}.`)];
+    if (leaving?.project.id === target.project.id) return [warn(`Already in ${target.path}.`), data({ context: projectData(target), left: null })];
 
     const out: Block[] = [];
     const openLog = await k.openContextLog();
@@ -188,10 +196,11 @@ export const switchCommand: Command = {
     const last = target.project.lastTouchedAt;
     const ago = last ? dayDiff(last.slice(0, 10), at.slice(0, 10)) : null;
     if (out.length) out.push(blank());
+    const note = await k.latestResumeNote(target.project.id);
     out.push(
       line([s('◆ ', 'accent'), s('Now in '), projectSpan(target), s(ago === null ? '' : ago === 0 ? ' · last here today' : ` · last here ${ago} days ago`, 'muted')]),
       blank(),
-      noteBlock(await k.latestResumeNote(target.project.id), 'Resume note'),
+      noteBlock(note, 'Resume note'),
     );
 
     const open = await k.commitmentViews([eq(t.commitments.status, 'open'), eq(t.commitments.projectId, target.project.id)]);
@@ -203,6 +212,14 @@ export const switchCommand: Command = {
         table(open.map((v) => [s(v.c.direction, v.c.direction === 'owe' ? 'accent' : 'wait'), ...commitmentRow(v, day)])),
       );
     }
+    out.push(
+      data({
+        context: projectData(target),
+        left: leaving ? { project: leaving.path, resumeNoteSaved: Boolean(fields) } : null,
+        resumeNote: noteData(note),
+        open: open.map(commitmentData),
+      }),
+    );
     return out;
   },
 };
@@ -215,7 +232,7 @@ export const park: Command = {
     const target = await k.projectFromArgs(p);
     if (!target) throw new KeelError('No project to park.', 'Switch to one first, or add +client/project.');
     const fields = noteFields(p) ?? (yield* askNote(target, 'Resume note for'));
-    if (!fields) return [warn('Nothing saved.')];
+    if (!fields) return [warn('Nothing saved.'), data({ project: projectData(target), saved: false, contextCleared: false })];
 
     const ctx = await k.getSetting('context');
     const at = k.iso();
@@ -227,7 +244,10 @@ export const park: Command = {
       queries.push(k.setSetting('context', null));
     }
     await k.batch(queries);
-    return [ok([s('Resume note saved for '), projectSpan(target), s(leaving ? '. Context cleared.' : '.')])];
+    return [
+      ok([s('Resume note saved for '), projectSpan(target), s(leaving ? '. Context cleared.' : '.')]),
+      data({ project: projectData(target), saved: true, resumeNote: fields, contextCleared: leaving }),
+    ];
   },
 };
 

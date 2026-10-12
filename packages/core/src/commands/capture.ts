@@ -1,10 +1,10 @@
-import { hint, ok, s, type Span } from '../blocks';
+import { data, hint, ok, s, type Span } from '../blocks';
 import { formatDay, parseDue } from '../dates';
 import * as t from '../db/schema';
 import { KeelError } from '../errors';
 import type { Parsed } from '../parse';
 import type { ProjectView, Store } from '../store';
-import { parseSource, projectSpan, type Command, type Source } from './shared';
+import { commitmentData, inboxData, parseSource, projectSpan, type Command, type Source } from './shared';
 
 export type Direction = 'owe' | 'wait';
 
@@ -93,9 +93,10 @@ function commitmentCommand(direction: Direction): Command {
     summary: direction === 'owe' ? 'New "I owe" commitment' : 'New "waiting on" commitment',
     async run(k, p) {
       const input = await readCommitment(k, p, direction);
-      const created = await commitmentQueries(k, input, direction, await k.nextRef(t.commitments));
+      const refNo = await k.nextRef(t.commitments);
+      const created = await commitmentQueries(k, input, direction, refNo);
       await k.batch(created.queries);
-      return [ok(createdLine(created.ref, direction, created.personName, input))];
+      return [ok(createdLine(created.ref, direction, created.personName, input)), data(commitmentData(await k.commitmentByRef(refNo)))];
     },
   };
 }
@@ -125,6 +126,7 @@ export const inbox: Command = {
     return [
       ok([s(ref, 'default', { bold: true, ref }), s(' added to inbox'), ...(project ? [s(' · '), projectSpan(project)] : [])]),
       ...(refNo === 1 ? [hint('Sort it later with: triage')] : []),
+      data(inboxData(await k.inboxByRef(refNo), project?.path ?? null)),
     ];
   },
 };

@@ -2,14 +2,15 @@ import { eq } from 'drizzle-orm';
 import type { Client as LibsqlClient } from '@libsql/client';
 import { fail, hint, s, warn, type Block, type RunResult, type Span, type Tone } from './blocks';
 import { readCommitment } from './commands/capture';
-import { commands, expand, findCommand, type Flow } from './commands/index';
+import { commands, expand, findCommand, type Command, type Flow } from './commands/index';
 import { SOURCES } from './commands/shared';
 import { formatDay, parseDue } from './dates';
 import { migrateDb, openDb } from './db/client';
 import * as t from './db/schema';
 import { KeelError } from './errors';
 import type { ThemeSetting } from './palettes';
-import { classify, tokenize } from './parse';
+import { classify, tokenize, type Parsed } from './parse';
+import { renderText } from './render-text';
 import { Store } from './store';
 
 export interface KeelOptions {
@@ -82,6 +83,7 @@ export class Keel {
     const command = findCommand(name);
     if (!command) return { blocks: [fail(`Unknown command "${name}".`), hint('Type help to see all commands.')] };
     const parsed = classify(tokens.slice(1));
+    if (parsed.flags.has('json') && !command.ownsJson) return this.json(command, parsed);
     try {
       if (command.flow) return await this.step(command.flow(this.store, parsed), undefined, this.store.newId());
       return { blocks: await command.run!(this.store, parsed) };
@@ -112,6 +114,38 @@ export class Keel {
       blocks.push(...result.blocks);
     }
     return blocks;
+  }
+
+  /**
+   * --json: runs the command to the end (questions are skipped) and prints one object:
+   * { ok: true, data, text } or { ok: false, error, hint }. `data` is the command's
+   * last data block, `text` the plain output, so every command has a JSON form.
+   */
+  private async json(command: Command, parsed: Parsed): Promise<RunResult> {
+    const print = (value: unknown, failed = false): RunResult => ({ blocks: [{ kind: 'raw', text: JSON.stringify(value, null, 2) }], ...(failed ? { failed } : {}) });
+    const blocks: Block[] = [];
+    try {
+      if (command.flow) {
+        const flow = command.flow(this.store, parsed);
+        let next = await flow.next(undefined as never);
+        for (let guard = 0; !next.done && guard < 1000; guard++) {
+          blocks.push(...next.value.blocks);
+          next = await flow.next('');
+        }
+        if (!next.done) {
+          await flow.return([]);
+          throw new KeelError(`${command.name} kept asking questions, so it was stopped.`);
+        }
+        blocks.push(...next.value);
+      } else {
+        blocks.push(...(await command.run!(this.store, parsed)));
+      }
+    } catch (e) {
+      if (!(e instanceof KeelError)) throw e;
+      return print({ ok: false, error: e.message, hint: e.hint ?? null }, true);
+    }
+    const last = [...blocks].reverse().find((b) => b.kind === 'data');
+    return print({ ok: true, data: last?.kind === 'data' ? last.value : null, text: renderText(blocks) });
   }
 
   private async step(flow: Flow, answer: string | undefined, session: string): Promise<RunResult> {

@@ -51,7 +51,7 @@ async function runCommand(keel: Keel, line: string, paint: Paint, color: boolean
     if (blocks.length) process.stdout.write(renderText(blocks, color ? paint : undefined) + '\n');
   };
   let result = await keel.exec(line);
-  let failed = hasError(result.blocks);
+  let failed = hasError(result.blocks) || Boolean(result.failed);
   print(result.blocks);
   if (!result.question) return failed ? 1 : 0;
 

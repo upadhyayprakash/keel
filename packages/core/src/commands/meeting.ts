@@ -1,4 +1,4 @@
-import { blank, hint, line, ok, s, warn, type Block } from '../blocks';
+import { blank, data, hint, line, ok, s, warn, type Block } from '../blocks';
 import { formatDay } from '../dates';
 import * as t from '../db/schema';
 import { KeelError } from '../errors';
@@ -62,7 +62,7 @@ export const meeting: Command = {
       }
     }
 
-    if (items.length === 0) return [hint('Nothing captured.')];
+    if (items.length === 0) return [hint('Nothing captured.'), data({ saved: [] })];
 
     const count = (kind: Captured['kind']) => items.filter((i) => i.kind === kind).length;
     const summary = `${count('owe')} owe · ${count('wait')} waiting · ${count('note')} note${count('note') === 1 ? '' : 's'}`;
@@ -70,7 +70,7 @@ export const meeting: Command = {
       blocks: [blank(), line([s('Captured ', 'default', { bold: true }), s(summary)])],
       question: { prompt: 'Save all?', hint: 'Y/n', choices: [{ key: 'y', label: 'yes' }, { key: 'n', label: 'no' }] },
     };
-    if (/^n/i.test(confirm.trim())) return [warn('Nothing saved.')];
+    if (/^n/i.test(confirm.trim())) return [warn('Nothing saved.'), data({ saved: [] })];
 
     const queries = [];
     const refs: string[] = [];
@@ -95,6 +95,7 @@ export const meeting: Command = {
     return [
       ok([s(refs.join(' '), 'default', { bold: true }), s(' saved')]),
       ...(count('note') ? [hint('Notes went to the inbox. Sort them with: triage')] : []),
+      data({ saved: refs }),
     ];
   },
 };

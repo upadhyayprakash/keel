@@ -48,6 +48,8 @@ pnpm keel serve     # http://localhost:4242
 
 Your data lives in `~/.keel/keel.db` (change it with `KEEL_DB_URL`, see `.env.example`). Run `pnpm keel help` for every command.
 
+Back up with `keel export > keel-backup.json` and restore into an empty database with `keel import keel-backup.json`. `keel export --md` gives a readable snapshot. Add `--json` to any command for machine-readable output.
+
 To get a global `keel` command: `cd apps/cli && pnpm link --global`.
 
 ## Development

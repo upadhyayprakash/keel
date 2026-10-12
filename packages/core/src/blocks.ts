@@ -47,7 +47,9 @@ export type Block =
   | { kind: 'bars'; items: Bar[] }
   | { kind: 'status'; level: 'success' | 'warning' | 'error'; spans: Span[] }
   | { kind: 'raw'; text: string }
-  | { kind: 'blank' };
+  | { kind: 'blank' }
+  /** Structured result for --json. Terminals don't show it. */
+  | { kind: 'data'; value: unknown };
 
 export function s(text: string, tone?: Tone, extra: Omit<Span, 'text' | 'tone'> = {}): Span {
   return tone ? { text, tone, ...extra } : { text, ...extra };
@@ -65,6 +67,7 @@ export const ok = (spans: Span[] | string): Block => status('success', spans);
 export const warn = (spans: Span[] | string): Block => status('warning', spans);
 export const fail = (spans: Span[] | string): Block => status('error', spans);
 export const hint = (text: string): Block => line([s(text, 'muted')], 2);
+export const data = (value: unknown): Block => ({ kind: 'data', value });
 
 function status(level: 'success' | 'warning' | 'error', spans: Span[] | string): Block {
   return { kind: 'status', level, spans: typeof spans === 'string' ? [s(spans)] : spans };
@@ -83,4 +86,6 @@ export interface RunResult {
   question?: Question;
   /** Pass back with the answer. */
   session?: string;
+  /** Set by --json when the command failed, so the CLI can exit non-zero. */
+  failed?: boolean;
 }

@@ -1,11 +1,11 @@
 import { eq } from 'drizzle-orm';
-import { hint, ok, s, warn, type Block } from '../blocks';
+import { data, hint, ok, s, warn, type Block } from '../blocks';
 import { formatDay, parseDue } from '../dates';
 import * as t from '../db/schema';
 import { KeelError } from '../errors';
 import { parseRef } from '../parse';
 import type { Store } from '../store';
-import { projectSpan, refArg, type Command } from './shared';
+import { commitmentData, inboxData, projectData, projectSpan, refArg, type Command } from './shared';
 import { today as todayCommand } from './views';
 
 const PROJECT_STATUSES = ['active', 'paused', 'done', 'archived'] as const;
@@ -26,15 +26,22 @@ function close(status: 'done' | 'dropped'): Command {
           k.db.update(t.inboxItems).set({ triagedAt: at, deletedAt: at, updatedAt: at }).where(eq(t.inboxItems.id, item.id)),
           k.event('inbox', item.id, 'dropped'),
         ]);
-        return [ok([s(`i${item.refNo}`, 'default', { bold: true }), s(' dropped')])];
+        const project = item.projectId ? await k.projectById(item.projectId) : null;
+        return [
+          ok([s(`i${item.refNo}`, 'default', { bold: true }), s(' dropped')]),
+          data(inboxData({ ...item, triagedAt: at, deletedAt: at, updatedAt: at }, project?.path ?? null)),
+        ];
       }
       const v = await k.commitmentByRef(ref.n);
-      if (v.c.status !== 'open') return [warn(`c${v.c.refNo} is already ${v.c.status}.`)];
+      if (v.c.status !== 'open') return [warn(`c${v.c.refNo} is already ${v.c.status}.`), data(commitmentData(v))];
       await k.batch([
         k.db.update(t.commitments).set({ status, closedAt: at, updatedAt: at }).where(eq(t.commitments.id, v.c.id)),
         k.event('commitment', v.c.id, status),
       ]);
-      return [ok([s(`c${v.c.refNo}`, 'default', { bold: true, ref: `c${v.c.refNo}` }), s(` ${status} · ${v.c.title}`)])];
+      return [
+        ok([s(`c${v.c.refNo}`, 'default', { bold: true, ref: `c${v.c.refNo}` }), s(` ${status} · ${v.c.title}`)]),
+        data(commitmentData(await k.commitmentByRef(ref.n))),
+      ];
     },
   };
 }
@@ -60,7 +67,10 @@ export const renegotiate: Command = {
         .where(eq(t.commitments.id, v.c.id)),
       k.event('commitment', v.c.id, 'renegotiated', { from: v.c.dueOn, to: dueOn }),
     ]);
-    return [ok([s(`c${v.c.refNo}`, 'default', { bold: true }), s(` renegotiated to ${formatDay(dueOn)}`)])];
+    return [
+      ok([s(`c${v.c.refNo}`, 'default', { bold: true }), s(` renegotiated to ${formatDay(dueOn)}`)]),
+      data(commitmentData(await k.commitmentByRef(ref.n))),
+    ];
   },
 };
 
@@ -77,7 +87,10 @@ export const nudge: Command = {
       k.db.update(t.commitments).set({ lastNudgedAt: at, updatedAt: at }).where(eq(t.commitments.id, v.c.id)),
       k.event('commitment', v.c.id, 'nudged'),
     ]);
-    return [ok([s(`c${v.c.refNo}`, 'default', { bold: true }), s(` nudged · ${v.personName} · ${v.c.title}`)])];
+    return [
+      ok([s(`c${v.c.refNo}`, 'default', { bold: true }), s(` nudged · ${v.personName} · ${v.c.title}`)]),
+      data(commitmentData(await k.commitmentByRef(ref.n))),
+    ];
   },
 };
 
@@ -107,6 +120,7 @@ export const set: Command = {
       ]);
       const out: Block[] = [ok([projectSpan(pv), s(` updated: ${describe(changes)}`)])];
       if (changes.status === 'paused') out.push(hint('Paused projects drop out of today but stay in the weekly review.'));
+      out.push(data(projectData((await k.projectByRef(ref.n))!)));
       return out;
     }
 
@@ -141,6 +155,7 @@ export const set: Command = {
     ]);
     const out: Block[] = [ok([s(`c${v.c.refNo}`, 'default', { bold: true, ref: `c${v.c.refNo}` }), s(` updated: ${describe(changes)}`)])];
     if (changes.dueOn) out.push(hint(`Logged as a silent move. If you agreed the new date, use: renegotiate c${v.c.refNo} due:${p.kv.due}`));
+    out.push(data(commitmentData(await k.commitmentByRef(ref.n))));
     return out;
   },
 };
@@ -189,8 +204,9 @@ export const focus: Command = {
       }
     }
     await k.batch(queries);
+    const result = data({ date, focus: views.map(commitmentData) });
     return clear
-      ? [ok('Focus cleared for today.')]
-      : [ok([s('Focus set: '), s(views.map((v) => `c${v.c.refNo}`).join(' '), 'accent', { bold: true })]), hint('See it with: today')];
+      ? [ok('Focus cleared for today.'), result]
+      : [ok([s('Focus set: '), s(views.map((v) => `c${v.c.refNo}`).join(' '), 'accent', { bold: true })]), hint('See it with: today'), result];
   },
 };

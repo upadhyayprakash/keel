@@ -2,7 +2,7 @@ import { s, type Block, type Question, type Span } from '../blocks';
 import { describeDue } from '../dates';
 import { KeelError } from '../errors';
 import { parseRef, type Parsed } from '../parse';
-import type { CommitmentView, ProjectView, Store } from '../store';
+import type { CommitmentView, InboxItem, ProjectView, ResumeNote, Store } from '../store';
 
 /** One pause in an interactive command: what to show, then what to ask. */
 export interface Step {
@@ -20,6 +20,8 @@ export interface Command {
   summary: string;
   run?(k: Store, p: Parsed): Promise<Block[]>;
   flow?(k: Store, p: Parsed): Flow;
+  /** Handles --json itself instead of getting the standard { ok, data, text } wrapper (export). */
+  ownsJson?: boolean;
 }
 
 export const SOURCES = ['meeting', 'slack', 'email', 'claude', 'other'] as const;
@@ -67,4 +69,58 @@ export function matchesScope(v: CommitmentView, scope: string | undefined): bool
   if (!scope) return true;
   if (!v.project) return false;
   return scope.includes('/') ? v.project === scope : v.project.startsWith(`${scope}/`);
+}
+
+// ---- --json shapes. Field names are a public contract (scripts, MCP), so change them with care. ----
+
+export function commitmentData(v: CommitmentView) {
+  const c = v.c;
+  return {
+    ref: `c${c.refNo}`,
+    id: c.id,
+    direction: c.direction,
+    title: c.title,
+    person: v.person,
+    personName: v.personName,
+    project: v.project,
+    dueOn: c.dueOn,
+    status: c.status,
+    source: c.source,
+    sourceRef: c.sourceRef,
+    tags: c.tags ? c.tags.split(' ') : [],
+    renegotiatedCount: c.renegotiatedCount,
+    lastNudgedAt: c.lastNudgedAt,
+    createdAt: c.createdAt,
+    closedAt: c.closedAt,
+  };
+}
+
+export function projectData(pv: ProjectView) {
+  return {
+    ref: `p${pv.project.refNo}`,
+    id: pv.project.id,
+    path: pv.path,
+    name: pv.project.name,
+    client: pv.client.slug,
+    clientName: pv.client.name,
+    status: pv.project.status,
+    lastTouchedAt: pv.project.lastTouchedAt,
+  };
+}
+
+export function inboxData(item: InboxItem, project: string | null) {
+  return {
+    ref: `i${item.refNo}`,
+    id: item.id,
+    text: item.text,
+    project,
+    source: item.source,
+    createdAt: item.createdAt,
+    triagedAt: item.triagedAt,
+    deleted: Boolean(item.deletedAt),
+  };
+}
+
+export function noteData(note: ResumeNote | null) {
+  return note ? { whereIAm: note.whereIAm, nextStep: note.nextStep, unsureAbout: note.unsureAbout, createdAt: note.createdAt } : null;
 }

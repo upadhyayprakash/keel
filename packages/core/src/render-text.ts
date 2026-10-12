@@ -26,6 +26,8 @@ export function renderText(blocks: Block[], paint: Paint = plain): string {
       case 'raw':
         out.push(b.text);
         break;
+      case 'data':
+        break;
       case 'status':
         out.push(`${paint(MARKS[b.level], { tone: MARK_TONES[b.level], bold: true })} ${spans(b.spans)}`);
         break;

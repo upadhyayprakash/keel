@@ -48,6 +48,8 @@ export function BlockView({ block, onRef }: { block: Block; onRef: (ref: string)
       return <div className="blank" />;
     case 'raw':
       return <pre className="raw">{block.text}</pre>;
+    case 'data':
+      return null;
     case 'status': {
       const [mark, tone] = MARKS[block.level];
       return (

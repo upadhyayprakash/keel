@@ -1,11 +1,11 @@
 import { eq } from 'drizzle-orm';
-import { blank, heading, hint, line, s, table, type Block, type Span, type Tone } from '../blocks';
+import { blank, data, heading, hint, line, s, table, type Block, type Span, type Tone } from '../blocks';
 import { addDays, dayDiff, formatDay, formatStamp, weekStart, ymd } from '../dates';
 import * as t from '../db/schema';
 import { KeelError } from '../errors';
 import { parseRef } from '../parse';
 import type { CommitmentView, Store } from '../store';
-import { commitmentRow, matchesScope, projectSpan, type Command } from './shared';
+import { commitmentData, commitmentRow, inboxData, matchesScope, noteData, projectData, projectSpan, type Command } from './shared';
 
 const STALE_DAYS = 7;
 
@@ -64,7 +64,7 @@ export const today: Command = {
 
     const quiet = await quietProjects(k, open, scope);
     if (quiet.length) {
-      out.push(blank(), heading('GOING QUIET'), table(quiet));
+      out.push(blank(), heading('GOING QUIET'), table(quiet.map((q) => q.row)));
     }
 
     // Friday to Sunday, until this week's review is done.
@@ -79,12 +79,30 @@ export const today: Command = {
     } else if (focusRows.length === 0) {
       out.push(blank(), hint('Pick up to 3 for today: focus c12 c15'));
     }
+    out.push(
+      data({
+        date: day,
+        context: ctx ? projectData(ctx) : null,
+        scope: scope ?? null,
+        priorities: Object.fromEntries(weekly),
+        focus: focusRows.map((f) => byId.get(f.commitmentId)).filter((v) => v !== undefined).map(commitmentData),
+        dueAndLate: dueOwe.map(commitmentData),
+        waitingFollowUp: dueWait.map(commitmentData),
+        comingUp: soon.map(commitmentData),
+        goingQuiet: quiet.map((q) => q.data),
+      }),
+    );
     return out;
   },
 };
 
-async function quietProjects(k: Store, open: CommitmentView[], scope: string | undefined): Promise<Span[][]> {
-  const rows: Span[][] = [];
+interface QuietProject {
+  row: Span[];
+  data: { project: string; open: number; untouchedDays: number };
+}
+
+async function quietProjects(k: Store, open: CommitmentView[], scope: string | undefined): Promise<QuietProject[]> {
+  const rows: QuietProject[] = [];
   const projects = await k.listProjects();
   for (const pv of projects) {
     if (pv.project.status !== 'active') continue;
@@ -93,7 +111,12 @@ async function quietProjects(k: Store, open: CommitmentView[], scope: string | u
     if (count === 0) continue;
     const last = pv.project.lastTouchedAt ?? pv.project.createdAt;
     const days = dayDiff(last.slice(0, 10), k.now().toISOString().slice(0, 10));
-    if (days >= STALE_DAYS) rows.push([projectSpan(pv), s(`${count} open · untouched ${days}d`, 'muted')]);
+    if (days >= STALE_DAYS) {
+      rows.push({
+        row: [projectSpan(pv), s(`${count} open · untouched ${days}d`, 'muted')],
+        data: { project: pv.path, open: count, untouchedDays: days },
+      });
+    }
   }
   return rows;
 }
@@ -109,13 +132,13 @@ export const ls: Command = {
 
     if (what === 'inbox') {
       const items = await k.openInbox();
-      if (items.length === 0) return [hint('Inbox is empty.')];
+      if (items.length === 0) return [hint('Inbox is empty.'), data({ inbox: [] })];
       const projects = new Map((await k.listProjects()).map((pv) => [pv.project.id, pv]));
-      const rows = items
+      const kept = items
         .map((i) => ({ i, pv: i.projectId ? projects.get(i.projectId) : undefined }))
-        .filter(({ pv }) => !scope || (pv && (scope.includes('/') ? pv.path === scope : pv.path.startsWith(`${scope}/`))))
-        .map(({ i, pv }) => [s(`i${i.refNo}`, 'muted', { ref: `i${i.refNo}` }), s(i.text), pv ? projectSpan(pv) : s('-', 'dim')]);
-      return [heading(`INBOX · ${rows.length}`), table(rows)];
+        .filter(({ pv }) => !scope || (pv && (scope.includes('/') ? pv.path === scope : pv.path.startsWith(`${scope}/`))));
+      const rows = kept.map(({ i, pv }) => [s(`i${i.refNo}`, 'muted', { ref: `i${i.refNo}` }), s(i.text), pv ? projectSpan(pv) : s('-', 'dim')]);
+      return [heading(`INBOX · ${rows.length}`), table(rows), data({ inbox: kept.map(({ i, pv }) => inboxData(i, pv?.path ?? null)) })];
     }
 
     const known = ['open', 'owe', 'wait', 'overdue', 'done'];
@@ -140,7 +163,8 @@ export const ls: Command = {
       if (out.length) out.push(blank());
       out.push(heading(`${title} · ${list.length}`, tone), table(list.map((v) => commitmentRow(v, day))));
     }
-    return out.length ? out : [hint('Nothing here.')];
+    const result = data({ commitments: groups.flatMap(([, list]) => list).map(commitmentData) });
+    return out.length ? [...out, result] : [hint('Nothing here.'), result];
   },
 };
 
@@ -172,16 +196,20 @@ export const show: Command = {
           2,
         ),
       ];
-      return [...out, ...(await history(k, c.id))];
+      const events = await k.eventsFor(c.id);
+      return [
+        ...out,
+        ...historyBlocks(events),
+        data({ ...commitmentData(v), history: events.map((e) => ({ at: e.createdAt, kind: e.kind, payload: e.payloadJson ? JSON.parse(e.payloadJson) : null })) }),
+      ];
     }
 
     if (ref.kind === 'p') {
       const pv = await k.projectByRef(ref.n);
       if (!pv) throw new KeelError(`No project p${ref.n}.`, 'List them with: projects');
       const note = await k.latestResumeNote(pv.project.id);
-      const open = (await k.commitmentViews([eq(t.commitments.status, 'open'), eq(t.commitments.projectId, pv.project.id)])).map(
-        (v) => commitmentRow(v, day),
-      );
+      const openViews = await k.commitmentViews([eq(t.commitments.status, 'open'), eq(t.commitments.projectId, pv.project.id)]);
+      const open = openViews.map((v) => commitmentRow(v, day));
       return [
         line([s(`p${pv.project.refNo}  `, 'muted'), projectSpan(pv), s(`  ${pv.project.name} · ${pv.project.status}`, 'muted')]),
         blank(),
@@ -189,13 +217,16 @@ export const show: Command = {
         blank(),
         heading(`OPEN · ${open.length}`),
         ...(open.length ? [table(open)] : [hint('No open commitments.')]),
+        data({ ...projectData(pv), resumeNote: noteData(note), open: openViews.map(commitmentData) }),
       ];
     }
 
     const item = await k.inboxByRef(ref.n);
+    const project = item.projectId ? await k.projectById(item.projectId) : null;
     return [
       line([s(`i${item.refNo}  `, 'muted'), s(item.text, 'default', { bold: true })]),
       hint(`captured ${formatDay(item.createdAt.slice(0, 10))}${item.triagedAt ? ' · sorted' : ''}`),
+      data(inboxData(item, project?.path ?? null)),
     ];
   },
 };
@@ -213,8 +244,7 @@ export function noteBlock(note: { whereIAm: string | null; nextStep: string | nu
   };
 }
 
-async function history(k: Store, entityId: string): Promise<Block[]> {
-  const events = await k.eventsFor(entityId);
+function historyBlocks(events: Array<{ createdAt: string; kind: string }>): Block[] {
   if (events.length === 0) return [];
   return [
     blank(),
