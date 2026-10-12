@@ -92,6 +92,7 @@ The browser terminal accepts **exactly the same commands as the CLI**; the `keel
 | `keel serve` | Start the browser terminal on localhost |
 | `keel export [--json\|--md]` | Export everything: JSON to back up or move, Markdown to read. Your data is always yours |
 | `keel import <file.json>` | Restore a JSON export into an empty database, in one batch (a bad file saves nothing) |
+| `keel completion zsh\|bash` | Shell tab completion for people, projects, refs and dates |
 
 Every write command prints the ref it created. Every command supports `--json`: it prints one object, `{ "ok": true, "data": ..., "text": "..." }` or `{ "ok": false, "error": "...", "hint": "..." }`, and exits non-zero on failure. `data` is the structured result (the commitment, project, list or view); `text` is the plain output. Interactive commands skip their questions in this mode. The field names are a public contract: scripts and the Claude Code integration (MCP, v2) build on them.
 
@@ -182,7 +183,7 @@ v1 only uses a local file, but it follows these rules so moving to Turso in v2 i
 2. **Use `@libsql/client` from day one, not `better-sqlite3`.** The libSQL client already speaks both `file:` and `libsql://`, so the driver never changes.
 3. **Async everywhere.** Every database call is awaited, even though a local file could be synchronous. Network latency in v2 then needs no refactor.
 4. **Few round trips.** Multi-step writes use `batch()` or a transaction, and commands load with one query per list rather than one per row. What is fast locally stays fast over the network.
-5. **Portable SQL only.** No SQLite extensions, no `ATTACH`, no reliance on PRAGMAs beyond `foreign_keys`, no file-level tricks (copying the `.db` as a backup). Backup is `keel export`, restore is `keel import`.
+5. **Portable SQL only.** No SQLite extensions, no `ATTACH`, no reliance on PRAGMAs beyond `foreign_keys`, no file-level tricks (copying the `.db` as a backup). Backup is `keel export` plus a daily automatic export (last 14 kept), restore is `keel import`.
 6. **Migrations are versioned files** (Drizzle Kit), applied by `keel migrate` on start, and safe to run against a remote database.
 7. **Sync-friendly data.** ULID primary keys (no autoincrement ids that could collide across devices), UTC timestamps, `updated_at` on every row, and soft deletes (`deleted_at`), so Turso embedded replicas and sync in v2 have what they need.
 8. **Short refs are display-only.** `c42` comes from a per-type counter and is never used as a foreign key.

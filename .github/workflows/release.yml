@@ -1,0 +1,55 @@
+name: Release
+
+# Push a tag like v0.2.0 to publish @nouisi/keel to npm and create the GitHub release.
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write # create the GitHub release
+  id-token: write # npm trusted publishing (no token stored in the repo)
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          registry-url: https://registry.npmjs.org
+      # Trusted publishing needs npm 11.5.1 or newer.
+      - run: npm install -g npm@^11.5.1
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm build
+
+      - name: Check the tag matches the package version
+        run: |
+          version=$(node -p "require('./apps/cli/package.json').version")
+          if [ "v$version" != "$GITHUB_REF_NAME" ]; then
+            echo "Tag $GITHUB_REF_NAME does not match apps/cli/package.json version $version" && exit 1
+          fi
+          echo "VERSION=$version" >> "$GITHUB_ENV"
+
+      - name: Pack
+        working-directory: apps/cli
+        run: pnpm pack --pack-destination "$RUNNER_TEMP"
+
+      - name: Publish to npm
+        run: |
+          if npm view "@nouisi/keel@$VERSION" version > /dev/null 2>&1; then
+            echo "@nouisi/keel@$VERSION is already on npm, skipping publish"
+          else
+            npm publish "$RUNNER_TEMP/nouisi-keel-$VERSION.tgz" --access public
+          fi
+
+      - name: Create the GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          awk -v v="[$VERSION]" '/^## /{p = index($0, v) > 0; next} /^\[/{p = 0} p' CHANGELOG.md > "$RUNNER_TEMP/notes.md"
+          gh release create "$GITHUB_REF_NAME" "$RUNNER_TEMP/nouisi-keel-$VERSION.tgz" --title "$GITHUB_REF_NAME" --notes-file "$RUNNER_TEMP/notes.md"

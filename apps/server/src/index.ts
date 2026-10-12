@@ -14,7 +14,10 @@ export interface ServerOptions {
   devOrigin?: string;
 }
 
-const DEFAULT_DIST = fileURLToPath(new URL('../../web/dist', import.meta.url));
+// Next to the bundle in the published package, or apps/web/dist when running from source.
+const DEFAULT_DIST =
+  [new URL('./web', import.meta.url), new URL('../../web/dist', import.meta.url)].map((u) => fileURLToPath(u)).find((dir) => existsSync(join(dir, 'index.html'))) ??
+  fileURLToPath(new URL('../../web/dist', import.meta.url));
 
 const TYPES: Record<string, string> = {
   '.html': 'text/html; charset=utf-8',

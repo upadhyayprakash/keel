@@ -27,8 +27,7 @@ export const today: Command = {
     const out: Block[] = [
       line([
         s(formatDay(day), 'muted'),
-        s(' · context ', 'muted'),
-        ctx ? projectSpan(ctx) : s('none', 'dim'),
+        ...(ctx ? [s(' · working on ', 'muted'), projectSpan(ctx)] : [s(' · not in a project', 'dim')]),
         ...(scope ? [s(` · showing +${scope}`, 'muted')] : []),
       ]),
     ];
@@ -74,6 +73,17 @@ export const today: Command = {
       out.push(blank(), line([s('◆ ', 'accent'), s('Review day. Run '), s('review', 'accent', { bold: true }), s(' to close the week (about 30 min).')]));
     }
 
+    const projectCount = ctx ? 1 : (await k.listProjects()).length;
+    if (projectCount === 0) {
+      out.push(
+        blank(),
+        hint('New here? Make a client and a project first. The project you work in decides where new items land:'),
+        hint('  client new acme "Acme Corp"'),
+        hint('  project new acme/website "Website rebuild"'),
+      );
+    } else if (!ctx) {
+      out.push(blank(), hint('Pick the project you are working on: switch <client/project>. See them all with: projects'));
+    }
     if (open.length === 0) {
       out.push(blank(), hint('Nothing open. Capture with: owe, wait or in'));
     } else if (focusRows.length === 0) {

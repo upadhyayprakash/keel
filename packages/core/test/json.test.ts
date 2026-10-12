@@ -131,3 +131,19 @@ describe('export and import', () => {
     expect(await run(`import ${join(dir, 'missing.json')}`)).toContain("Can't read");
   });
 });
+
+describe('daily backups', () => {
+  it('writes one file a day and keeps the newest ones', async () => {
+    const { autoBackup } = await import('../src/auto-backup');
+    const { mkdirSync, readdirSync, readFileSync, writeFileSync: write } = await import('node:fs');
+    const backups = join(dir, 'backups');
+    mkdirSync(backups, { recursive: true });
+    for (const day of ['2026-10-01', '2026-10-02', '2026-10-03']) write(join(backups, `keel-${day}.json`), '{}');
+    const file = await autoBackup(keel, { dir: backups, keep: 3 });
+    expect(file).toBe(join(backups, 'keel-2026-10-12.json'));
+    expect(JSON.parse(readFileSync(file!, 'utf8')).data.clients).toHaveLength(1);
+    expect(await autoBackup(keel, { dir: backups, keep: 3 })).toBeNull();
+    expect(readdirSync(backups).sort()).toEqual(['keel-2026-10-02.json', 'keel-2026-10-03.json', 'keel-2026-10-12.json']);
+    expect(await autoBackup(keel, { dir: join(dir, 'off'), keep: 0 })).toBeNull();
+  });
+});

@@ -1,0 +1,21 @@
+name: Idea or feature request
+description: Suggest something Keel should do
+labels: [idea]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: The situation
+      description: What were you trying to do, and what got in the way?
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: What would help
+      description: A command, a flag, an output change. A sketch of the command line is great.
+      placeholder: keel ls wait @ravi --stale
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: What you do today instead

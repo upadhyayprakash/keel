@@ -12,6 +12,7 @@ import type { ThemeSetting } from './palettes';
 import { classify, tokenize, type Parsed } from './parse';
 import { renderText } from './render-text';
 import { Store } from './store';
+import { VERSION } from './version';
 
 export interface KeelOptions {
   /** `file:/path/keel.db`, `:memory:`, or (v2) `libsql://...` */
@@ -25,6 +26,9 @@ export interface KeelState {
   context: { path: string; hue: Tone; ref: string } | null;
   counts: { overdue: number; today: number; waiting: number };
   theme: ThemeSetting;
+  version: string;
+  /** `local` for a file or memory database, `remote` for a libSQL server or Turso. */
+  storage: 'local' | 'remote';
 }
 
 export interface Suggestion {
@@ -55,12 +59,14 @@ export class Keel {
   private constructor(
     readonly store: Store,
     private client: LibsqlClient,
+    readonly storage: 'local' | 'remote',
   ) {}
 
   static async open(opts: KeelOptions): Promise<Keel> {
     const { db, client } = openDb({ url: opts.url, authToken: opts.authToken });
     await migrateDb(db);
-    return new Keel(new Store(db, opts.now ?? (() => new Date())), client);
+    const storage = opts.url.startsWith('file:') || opts.url === ':memory:' ? 'local' : 'remote';
+    return new Keel(new Store(db, opts.now ?? (() => new Date())), client, storage);
   }
 
   close(): void {
@@ -182,6 +188,8 @@ export class Keel {
         waiting: open.filter((v) => v.c.direction === 'wait' && v.c.dueOn <= day).length,
       },
       theme,
+      version: VERSION,
+      storage: this.storage,
     };
   }
 

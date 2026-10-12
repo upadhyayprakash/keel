@@ -1,0 +1,43 @@
+name: Bug report
+description: Something in Keel doesn't work as it should
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: The command you ran and what Keel printed. Use fictional names (Acme, Ravi), not real client data.
+      placeholder: |
+        keel owe send deck @ravi due:thu
+        ✗ ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+    validations:
+      required: true
+  - type: dropdown
+    id: where
+    attributes:
+      label: Where
+      options:
+        - CLI
+        - Browser terminal (keel serve)
+        - Both
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Keel version
+      description: Output of `keel --version`
+      placeholder: 0.1.0
+    validations:
+      required: true
+  - type: input
+    id: env
+    attributes:
+      label: OS, Node version and terminal
+      placeholder: macOS 15, Node 22.12, iTerm2

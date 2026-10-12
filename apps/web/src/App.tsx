@@ -204,7 +204,7 @@ export function App() {
             <span className="chev">›</span>
             <span className="word">keel</span>
           </div>
-          <span className="meta">v0.1.0 · local</span>
+          <span className="meta">{state ? `v${state.version} · ${state.storage}` : ''}</span>
         </header>
 
         <div
@@ -279,7 +279,7 @@ export function App() {
           {state?.context ? (
             <span style={{ color: `var(--t-${state.context.hue})` }}>● {state.context.path}</span>
           ) : (
-            <span>no context</span>
+            <span>not in a project</span>
           )}
           {state && (
             <span>

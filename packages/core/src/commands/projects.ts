@@ -95,7 +95,7 @@ export const project: Command = {
     const view = { path: `${clientSlug}/${slug}`, hue: owner.color as ProjectView['hue'], project: { refNo } as ProjectView['project'] };
     return [
       ok([s(`p${refNo}`, 'default', { bold: true, ref: `p${refNo}` }), s(' '), projectSpan(view), s(` created · ${name}`)]),
-      hint(hadContext ? `Work on it with: switch ${view.path}` : `Context set to ${view.path}. New items land here.`),
+      hint(hadContext ? `Work on it with: switch ${view.path}` : `You are now working on ${view.path}. New items land here.`),
       data(projectData((await k.projectByRef(refNo))!)),
     ];
   },
@@ -245,7 +245,7 @@ export const park: Command = {
     }
     await k.batch(queries);
     return [
-      ok([s('Resume note saved for '), projectSpan(target), s(leaving ? '. Context cleared.' : '.')]),
+      ok([s('Resume note saved for '), projectSpan(target), s(leaving ? '. You are not in a project now.' : '.')]),
       data({ project: projectData(target), saved: true, resumeNote: fields, contextCleared: leaving }),
     ];
   },

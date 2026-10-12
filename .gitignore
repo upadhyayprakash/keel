@@ -8,3 +8,6 @@ dist/
 *.db-wal
 .DS_Store
 coverage/
+
+# Copied in by apps/cli prepack
+apps/cli/LICENSE

@@ -127,7 +127,7 @@ describe('context switching', () => {
   });
 
   it('park clears the context', async () => {
-    expect(await run('park where:"done for today"')).toContain('Context cleared');
+    expect(await run('park where:"done for today"')).toContain('not in a project now');
     expect((await keel.state()).context).toBeNull();
   });
 

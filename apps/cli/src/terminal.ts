@@ -1,16 +1,58 @@
 import { palettes, type Paint, type Question, type ThemeName } from '@keel/core';
 
 /**
- * Picks the palette for the terminal's background:
- * KEEL_THEME, then the saved `theme` setting, then COLORFGBG, then dark.
+ * Picks the palette for the terminal's background: KEEL_THEME, then the saved
+ * `theme` setting, then COLORFGBG, then what the terminal reported (OSC 11), then dark.
  */
-export function resolveTheme(env: NodeJS.ProcessEnv, saved: string | null): ThemeName {
+export function resolveTheme(env: NodeJS.ProcessEnv, saved: string | null, reported: ThemeName | null = null): ThemeName {
   const choice = env.KEEL_THEME || saved || 'auto';
   if (choice === 'light' || choice === 'dark') return choice;
   // COLORFGBG is "fg;bg" (sometimes "fg;default;bg"). Background 7 or 15 means a light terminal.
   const bg = Number(env.COLORFGBG?.split(';').pop());
   if (!Number.isNaN(bg) && env.COLORFGBG) return bg === 7 || bg === 15 ? 'light' : 'dark';
-  return 'dark';
+  return reported ?? 'dark';
+}
+
+/** True when the theme is left to the terminal, so asking it is worth the round trip. */
+export function needsProbe(env: NodeJS.ProcessEnv, saved: string | null): boolean {
+  const choice = env.KEEL_THEME || saved || 'auto';
+  return choice !== 'light' && choice !== 'dark' && !env.COLORFGBG;
+}
+
+/** Reads an OSC 11 reply like "\x1b]11;rgb:ffff/ffff/ffff\x07" into light or dark. */
+export function parseBackgroundReply(reply: string): ThemeName | null {
+  const m = /\]11;rgba?:([0-9a-f]{1,4})\/([0-9a-f]{1,4})\/([0-9a-f]{1,4})/i.exec(reply);
+  if (!m) return null;
+  const [r, g, b] = [m[1]!, m[2]!, m[3]!].map((hex) => parseInt(hex, 16) / (16 ** hex.length - 1)) as [number, number, number];
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b > 0.5 ? 'light' : 'dark';
+}
+
+/**
+ * Asks the terminal for its background color (OSC 11). Most modern terminals
+ * answer within a few milliseconds; ones that don't are given up on after `timeoutMs`.
+ */
+export function probeBackground(stdin: NodeJS.ReadStream, stdout: NodeJS.WriteStream, timeoutMs = 150): Promise<ThemeName | null> {
+  if (!stdin.isTTY || !stdout.isTTY || typeof stdin.setRawMode !== 'function') return Promise.resolve(null);
+  return new Promise((resolve) => {
+    let reply = '';
+    const wasRaw = stdin.isRaw;
+    const finish = (theme: ThemeName | null) => {
+      clearTimeout(timer);
+      stdin.off('data', onData);
+      stdin.setRawMode(wasRaw);
+      stdin.pause();
+      resolve(theme);
+    };
+    const onData = (chunk: Buffer) => {
+      reply += chunk.toString('latin1');
+      if (reply.includes('\x07') || reply.includes('\x1b\\')) finish(parseBackgroundReply(reply));
+    };
+    const timer = setTimeout(() => finish(null), timeoutMs);
+    stdin.setRawMode(true);
+    stdin.on('data', onData);
+    stdin.resume();
+    stdout.write('\x1b]11;?\x07');
+  });
 }
 
 export function useColor(env: NodeJS.ProcessEnv, isTTY: boolean): boolean {

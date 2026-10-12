@@ -38,13 +38,18 @@ export const exportCommand: Command = {
   ownsJson: true,
   async run(k, p) {
     if (p.flags.has('md')) return [{ kind: 'raw', text: await markdown(k) }];
-    const tables: Record<string, unknown[]> = {};
-    for (const [name, table] of Object.entries(TABLES)) {
-      tables[name] = await k.db.select().from(table as typeof t.clients);
-    }
-    return [{ kind: 'raw', text: JSON.stringify({ app: 'keel', version: EXPORT_VERSION, exportedAt: k.iso(), data: tables }, null, 2) }];
+    return [{ kind: 'raw', text: await exportJson(k) }];
   },
 };
+
+/** The full export, as written by `keel export` and read by `keel import`. */
+export async function exportJson(k: Store): Promise<string> {
+  const tables: Record<string, unknown[]> = {};
+  for (const [name, table] of Object.entries(TABLES)) {
+    tables[name] = await k.db.select().from(table as typeof t.clients);
+  }
+  return JSON.stringify({ app: 'keel', version: EXPORT_VERSION, exportedAt: k.iso(), data: tables }, null, 2);
+}
 
 export const importCommand: Command = {
   name: 'import',

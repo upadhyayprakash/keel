@@ -29,28 +29,30 @@ Status: early development (v0.1). The CLI and the browser terminal work locally,
 
 ## Quick start
 
-Needs Node 20.19+ and pnpm 9.
+Needs Node 20.19 or newer.
 
 ```bash
-pnpm install
-pnpm keel client new acme "Acme Corp"
-pnpm keel project new acme/website "Website rebuild"
-pnpm keel owe send pricing deck @ravi due:thu from:meeting
-pnpm keel today
+npm install -g @nouisi/keel
+keel client new acme "Acme Corp"
+keel project new acme/website "Website rebuild"
+keel owe send pricing deck @ravi due:thu from:meeting
+keel today
 ```
 
-Browser terminal (desktop, localhost only):
+New to Keel? The [Get started guide](docs/get-started.md) walks from install to your first Friday review. Run `keel help` for every command, and `keel serve` for the browser terminal at http://localhost:4242 (desktop, localhost only).
+
+Tab completion for people, projects, refs and dates:
 
 ```bash
-pnpm build          # builds apps/web once
-pnpm keel serve     # http://localhost:4242
+echo 'eval "$(keel completion zsh)"' >> ~/.zshrc     # or: keel completion bash >> ~/.bashrc
 ```
 
-Your data lives in `~/.keel/keel.db` (change it with `KEEL_DB_URL`, see `.env.example`). Run `pnpm keel help` for every command.
+## Your data
 
-Back up with `keel export > keel-backup.json` and restore into an empty database with `keel import keel-backup.json`. `keel export --md` gives a readable snapshot. Add `--json` to any command for machine-readable output.
-
-To get a global `keel` command: `cd apps/cli && pnpm link --global`.
+- It lives in `~/.keel/keel.db`. Change it with `KEEL_DB_URL` (see `.env.example`).
+- Keel writes a full JSON backup to `~/.keel/backups/` once a day and keeps the last 14 (`KEEL_BACKUP_KEEP`, `0` turns it off).
+- `keel export > keel-backup.json` exports everything, `keel import keel-backup.json` restores it into an empty database, and `keel export --md` gives a readable snapshot.
+- Add `--json` to any command for machine-readable output.
 
 ## Development
 
@@ -60,19 +62,23 @@ pnpm typecheck
 pnpm dev:server     # API on :4242, in one terminal
 pnpm dev:web        # browser terminal with hot reload on :5173, in another
 pnpm db:generate    # new migration after editing packages/core/src/db/schema.ts
+pnpm keel <command> # run Keel from source
+pnpm build          # browser terminal, then the npm bundle in apps/cli/dist
 ```
 
 | Package | What it is |
 |---|---|
 | `packages/core` | Commands, parser, output blocks, database schema and migrations |
-| `apps/cli` | The `keel` command, renders blocks as terminal text |
+| `apps/cli` | The `keel` command (published as `@nouisi/keel`), renders blocks as terminal text |
 | `apps/server` | Small local API behind `keel serve` |
 | `apps/web` | The browser terminal |
 
 ## Docs
 
+- [Get started](docs/get-started.md): install, the ideas behind Keel, and the commands you'll use daily
 - [01. Analysis](docs/01-analysis.md): how high-output people manage commitments, and the proposed app shape
 - [02. Spec](docs/02-spec.md): v1 scope, data model, command language, architecture and user flows
+- [Changelog](CHANGELOG.md)
 
 ## License
 

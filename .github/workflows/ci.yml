@@ -27,6 +27,17 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm test
       - run: pnpm build
+      - name: Install the npm package and run it
+        run: |
+          cd apps/cli && pnpm pack --pack-destination "$RUNNER_TEMP"
+          npm install -g --prefix "$RUNNER_TEMP/keel" "$RUNNER_TEMP"/nouisi-keel-*.tgz
+          export PATH="$RUNNER_TEMP/keel/bin:$PATH" KEEL_DB_URL="file:$RUNNER_TEMP/smoke/keel.db"
+          mkdir -p "$RUNNER_TEMP/smoke"
+          keel --version
+          keel client new acme "Acme Corp"
+          keel project new acme/website "Website rebuild"
+          keel owe send deck @ravi due:fri --json | grep '"ref": "c1"'
+          ls "$RUNNER_TEMP/smoke/backups"
 
   # Turso-ready rule 9: the core tests also run on a database file and on a
   # libSQL server, so anything that only breaks remotely shows up before v2.
