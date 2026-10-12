@@ -6,7 +6,7 @@ import { join } from 'node:path';
 export interface SecretStore {
   /** Shown to the user: "macOS Keychain", "a file only you can read (...)". */
   label: string;
-  /** True when this store is weaker than the system one, so Keel should say so. */
+  /** True when Keel fell back to this store because no system one was found, so it should say so. */
   fallback: boolean;
   get(account: string): Promise<string | null>;
   set(account: string, secret: string): Promise<void>;
@@ -73,7 +73,7 @@ const secretTool: SecretStore = {
 };
 
 /** Last resort: a JSON file readable only by you (mode 600). */
-function fileStore(home: string): SecretStore {
+function fileStore(home: string, chosen: boolean): SecretStore {
   const file = join(home, 'secrets.json');
   const read = (): Record<string, string> => {
     try {
@@ -85,7 +85,7 @@ function fileStore(home: string): SecretStore {
   const write = (data: Record<string, string>) => writeFileSync(file, JSON.stringify(data, null, 2), { mode: 0o600 });
   return {
     label: `a file only you can read (${file})`,
-    fallback: true,
+    fallback: !chosen,
     async get(account) {
       return read()[account] ?? null;
     },
@@ -102,8 +102,8 @@ function fileStore(home: string): SecretStore {
 
 /** The system secret store when there is one. `KEEL_SECRET_STORE=file` forces the file (tests, headless servers). */
 export async function secretStore(home: string, env: NodeJS.ProcessEnv = process.env): Promise<SecretStore> {
-  if (env.KEEL_SECRET_STORE === 'file') return fileStore(home);
+  if (env.KEEL_SECRET_STORE === 'file') return fileStore(home, true);
   if (process.platform === 'darwin' && (await has('security'))) return keychain;
   if (process.platform === 'linux' && (await has('secret-tool'))) return secretTool;
-  return fileStore(home);
+  return fileStore(home, false);
 }

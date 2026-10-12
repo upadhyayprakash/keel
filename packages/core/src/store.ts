@@ -2,7 +2,7 @@ import { and, asc, desc, eq, isNull, sql, type SQL } from 'drizzle-orm';
 import { ulid } from 'ulidx';
 import type { Tone } from './blocks';
 import { ymd } from './dates';
-import { isConnectionError, type Db } from './db/client';
+import { isConnectionError, isConstraintError, type Db } from './db/client';
 import * as t from './db/schema';
 import { KeelError } from './errors';
 import type { Parsed } from './parse';
@@ -35,12 +35,23 @@ type Query = any;
 /** Data access for commands. Every call is async and writes go through batch() (Turso-ready rules 3 and 4). */
 export const OFFLINE = new KeelError("You're offline, so this wasn't saved.", "Reading still works from this device's copy. Try again when you're back online.");
 
+/**
+ * For a synced copy: writes go straight to the hosted database in one request,
+ * then the local copy catches up. Writing through the copy instead sends each
+ * statement separately (about 4 seconds per change from Asia to Europe, versus 1).
+ */
+export interface Writer {
+  db: Db;
+  sync(): Promise<void>;
+}
+
 export class Store {
   constructor(
     public db: Db,
     public now: () => Date,
     /** Synced, but the hosted database couldn't be reached when Keel opened: reads only. */
     public offline = false,
+    private writer: Writer | null = null,
   ) {}
 
   newId = () => ulid();
@@ -54,12 +65,35 @@ export class Store {
   async batch(queries: Query[]): Promise<void> {
     if (queries.length === 0) return;
     if (this.offline) throw OFFLINE;
+    const target = this.writer?.db ?? this.db;
+    const send = () => target.batch(queries as [Query, ...Query[]]);
     try {
-      await this.db.batch(queries as [Query, ...Query[]]);
+      await send();
     } catch (e) {
-      if (isConnectionError(e)) throw OFFLINE;
-      throw e;
+      if (!isConnectionError(e)) throw e;
+      if (!this.writer) throw OFFLINE;
+      // Hosted connections get dropped when idle; try once more. Safe: every row's id is
+      // set before sending, so if the first attempt did land, this one fails on that id.
+      try {
+        await send();
+      } catch (again) {
+        if (isConnectionError(again)) throw OFFLINE;
+        if (!isConstraintError(again)) throw again;
+      }
     }
+    if (this.writer) await this.catchUp();
+  }
+
+  /** After a write, the local copy must see it before the command reads it back. */
+  private async catchUp(): Promise<void> {
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        return await this.writer!.sync();
+      } catch (e) {
+        if (!isConnectionError(e)) throw e;
+      }
+    }
+    throw new KeelError("Saved, but this device's copy couldn't catch up yet.", 'Run the command again in a moment to see it.');
   }
 
   // ---- settings ----

@@ -121,7 +121,9 @@ const describe = (c: Counts) =>
   [plural(c.clients, 'client'), plural(c.projects, 'project'), plural(c.commitments, 'commitment'), plural(c.resumeNotes, 'resume note')].join(', ');
 const total = (c: Counts) => Object.values(c).reduce((a, b) => a + b, 0);
 const sameCounts = (a: Counts, b: Counts) => (Object.keys(a) as Array<keyof Counts>).every((k) => a[k] === b[k]);
-const stamp = (now: Date) => now.toISOString().slice(0, 10);
+/** The local calendar day, so file names match the user's own date. */
+const stamp = (now: Date) =>
+  `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 
 /** Renames a file out of the way, never over an existing one. */
 function retire(file: string, label: string, now: Date): string | null {

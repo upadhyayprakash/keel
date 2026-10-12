@@ -5,7 +5,7 @@ import { readCommitment } from './commands/capture';
 import { expand, findCommand, type Command, type Flow } from './commands/index';
 import { formatDay } from './dates';
 import { existsSync } from 'node:fs';
-import { isConnectionError, migrateDb, openDb } from './db/client';
+import { isConnectionError, migrateDb, openDb, upToDate } from './db/client';
 import * as t from './db/schema';
 import { KeelError } from './errors';
 import type { ThemeSetting } from './palettes';
@@ -59,16 +59,24 @@ export class Keel {
     readonly store: Store,
     private client: LibsqlClient,
     readonly storage: Storage,
+    /** For a synced copy: the direct connection to the hosted database, used for writes. */
+    private primary: LibsqlClient | null = null,
   ) {}
 
   static async open(opts: KeelOptions): Promise<Keel> {
     const now = opts.now ?? (() => new Date());
     if (opts.syncUrl) {
       try {
-        // Opening a synced copy pulls the latest changes first.
+        // Opening a synced copy pulls the latest changes first. Reads use the copy;
+        // writes (and migrations) go straight to the hosted database, then the copy syncs.
         const { db, client } = openDb(opts);
-        await migrateDb(db);
-        return new Keel(new Store(db, now), client, 'synced');
+        const primary = openDb({ url: opts.syncUrl, authToken: opts.authToken });
+        if (!(await upToDate(db))) {
+          await migrateDb(primary.db);
+          await client.sync();
+        }
+        const writer = { db: primary.db, sync: async () => void (await client.sync()) };
+        return new Keel(new Store(db, now, false, writer), client, 'synced', primary.client);
       } catch (e) {
         if (!isConnectionError(e)) throw e;
         // Offline: read this device's copy directly, and refuse writes.
@@ -103,6 +111,7 @@ export class Keel {
 
   close(): void {
     this.client.close();
+    this.primary?.close();
   }
 
   /** Paused interactive commands, by session id. Single user, so a small in-memory map is enough. */
