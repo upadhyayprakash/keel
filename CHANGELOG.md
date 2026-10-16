@@ -4,6 +4,10 @@ All notable changes to Keel. The format follows [Keep a Changelog](https://keepa
 
 ## [Unreleased]
 
+### Added
+
+- Groundwork for Goals ([ADR 0004](docs/adr/0004-goals.md)), a goal mode for setting and finishing one small goal: `keel serve` serves an empty Goals phone app at `/goals`, installable from the browser. Two palette colours for tinted chips and partner cards (`accentTint`, `waitTint`).
+
 ## [0.4.0] - 2026-10-17
 
 ### Added

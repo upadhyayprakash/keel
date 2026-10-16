@@ -16,5 +16,7 @@ export function applyTheme(name: ThemeName): void {
   root.setProperty('--line', ui.line);
   root.setProperty('--selection', ui.selection);
   root.setProperty('--on-accent', ui.onAccent);
+  root.setProperty('--accent-tint', ui.accentTint);
+  root.setProperty('--wait-tint', ui.waitTint);
   document.documentElement.style.colorScheme = name;
 }

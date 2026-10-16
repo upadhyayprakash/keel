@@ -6,8 +6,8 @@ export type ThemeSetting = ThemeName | 'auto';
 export interface Palette {
   /** Text colors per tone. `default` is only used by the browser; the CLI keeps the terminal's own foreground. */
   tones: Record<Tone, string>;
-  /** Surface colors for the browser terminal. */
-  ui: { page: string; bg: string; panel: string; line: string; selection: string; onAccent: string };
+  /** Surface colors for the browser terminal and the Goals app. `accentTint` and `waitTint` are fills behind accent, today and wait text (ADR 0004). */
+  ui: { page: string; bg: string; panel: string; line: string; selection: string; onAccent: string; accentTint: string; waitTint: string };
 }
 
 // Every tone keeps at least 4.5:1 contrast on its background.
@@ -29,7 +29,7 @@ export const palettes: Record<ThemeName, Palette> = {
       lime: '#BEF264',
       amber: '#FCD34D',
     },
-    ui: { page: '#05080F', bg: '#0B1220', panel: '#111A2E', line: '#1E293B', selection: '#1E293B', onAccent: '#0B1220' },
+    ui: { page: '#05080F', bg: '#0B1220', panel: '#111A2E', line: '#1E293B', selection: '#1E293B', onAccent: '#0B1220', accentTint: '#312624', waitTint: '#212F43' },
   },
   light: {
     tones: {
@@ -48,7 +48,7 @@ export const palettes: Record<ThemeName, Palette> = {
       lime: '#4D7C0F',
       amber: '#92400E',
     },
-    ui: { page: '#D5DBE3', bg: '#F8FAFC', panel: '#EEF2F6', line: '#DDE2E8', selection: '#E2E8F0', onAccent: '#FFFFFF' },
+    ui: { page: '#D5DBE3', bg: '#F8FAFC', panel: '#EEF2F6', line: '#DDE2E8', selection: '#E2E8F0', onAccent: '#FFFFFF', accentTint: '#FEEDDD', waitTint: '#DEEBFD' },
   },
 };
 
