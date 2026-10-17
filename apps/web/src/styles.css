@@ -242,6 +242,106 @@ pre.raw {
   font-weight: 700;
 }
 
+/* Sign-in and pairing pages (ADR 0002). */
+.auth {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  justify-content: center;
+  padding: 48px 20px;
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 420px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.auth-card h1 {
+  margin: 0;
+  font-size: 20px;
+}
+
+.auth-lead,
+.auth-foot,
+.auth-msg p {
+  margin: 0;
+  line-height: 1.5;
+}
+
+.auth-lead {
+  color: var(--t-default);
+}
+
+.auth-foot,
+.auth-hint {
+  color: var(--t-muted);
+  font-size: 12px;
+}
+
+.auth-msg {
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.auth-msg.error p:first-child {
+  color: var(--t-late);
+}
+
+.auth-msg.done p:first-child {
+  color: var(--t-done);
+}
+
+.auth-msg.muted p:first-child {
+  color: var(--t-muted);
+}
+
+.auth code {
+  color: var(--t-accent);
+}
+
+.primary {
+  display: block;
+  width: 100%;
+  height: 44px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--t-accent);
+  color: var(--on-accent);
+  font: inherit;
+  font-weight: 700;
+  line-height: 44px;
+  text-align: center;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.primary:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+@media (max-width: 600px) {
+  .app:has(.auth) {
+    padding: 0;
+  }
+
+  .app:has(.auth) .window {
+    border-radius: 0;
+  }
+
+  .auth {
+    padding: 32px 16px;
+  }
+}
+
 :focus-visible {
   outline: 2px solid var(--t-accent);
   outline-offset: 2px;

@@ -9,3 +9,4 @@ export * from './blocks';
 export { formatDuration } from './commands/projects';
 export * from './palettes';
 export { tokenize, classify, parseRef, type Parsed, type Token } from './parse';
+export * from './auth';

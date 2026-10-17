@@ -1,9 +1,14 @@
 import { existsSync, readFileSync, statSync } from 'node:fs';
+import { createServer as createHttpsServer } from 'node:https';
 import { extname, join, normalize, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { serve } from '@hono/node-server';
 import { Hono } from 'hono';
-import type { Keel } from '@keel/core';
+import { parsePublicUrl, type Keel } from '@keel/core';
+import { authRoutes, requireSession, type AuthOptions } from './auth';
+
+export { checkServe, COOKIES } from './auth';
+export type { AuthOptions } from './auth';
 
 export interface ServerOptions {
   keel: Keel;
@@ -12,6 +17,12 @@ export interface ServerOptions {
   webDist?: string;
   /** Extra origin allowed to call the API, e.g. the Vite dev server (localhost:5173). */
   devOrigin?: string;
+  /** Turns login on (ADR 0002): every API call except /api/auth/* needs a session. */
+  auth?: AuthOptions;
+  /** Address to listen on. 127.0.0.1 unless `--host`. */
+  host?: string;
+  /** PEM contents of `--cert` and `--key`, to serve HTTPS directly. */
+  tls?: { cert: string; key: string };
 }
 
 // Next to the bundle in the published package, or apps/web/dist when running from source.
@@ -30,18 +41,34 @@ const TYPES: Record<string, string> = {
   '.woff2': 'font/woff2',
 };
 
-export function createApp({ keel, port, webDist = DEFAULT_DIST, devOrigin }: ServerOptions): Hono {
+export function createApp({ keel, port, webDist = DEFAULT_DIST, devOrigin, auth, host }: ServerOptions): Hono {
   const app = new Hono();
   const allowed = new Set([`127.0.0.1:${port}`, `localhost:${port}`, ...(devOrigin ? [devOrigin] : [])]);
+  if (auth?.publicUrl) allowed.add(parsePublicUrl(auth.publicUrl).rpId);
+  if (auth && host && host !== '127.0.0.1') allowed.add(`${host}:${port}`);
 
-  // v1 has no login, so only this machine may talk to Keel. Checking Host stops
-  // DNS rebinding; checking Origin stops other websites from sending commands.
+  // Checking Host stops DNS rebinding; checking Origin stops other websites from
+  // sending commands. Without login, that keeps Keel to this machine.
   app.use('*', async (c, next) => {
     if (!allowed.has(c.req.header('host') ?? '')) return c.text('Forbidden', 403);
     const origin = c.req.header('origin');
     if (origin && !allowed.has(origin.replace(/^https?:\/\//, ''))) return c.text('Forbidden', 403);
     await next();
   });
+
+  // With login on, every API call needs a session, whatever address it came from:
+  // a tunnel forwards to 127.0.0.1, so the source address proves nothing. Goals
+  // routes take a Goals or terminal session; the browser terminal's take a terminal one.
+  if (!auth) app.get('/api/auth/state', (c) => c.json({ login: false, signedIn: { goals: false, terminal: false } }));
+  if (auth) {
+    authRoutes(app, auth);
+    const goals = requireSession(auth.store, 'goals');
+    const terminal = requireSession(auth.store, 'terminal');
+    app.use('/api/*', (c, next) => {
+      if (c.req.path.startsWith('/api/auth/')) return next();
+      return c.req.path.startsWith('/api/goals/') ? goals(c, next) : terminal(c, next);
+    });
+  }
 
   // Both return a RunResult (blocks, plus question and session while a command waits for an answer) and the state.
   app.post('/api/run', async (c) => {
@@ -83,9 +110,13 @@ export function createApp({ keel, port, webDist = DEFAULT_DIST, devOrigin }: Ser
 
 export function startServer(opts: ServerOptions): Promise<void> {
   const app = createApp({ ...opts, devOrigin: opts.devOrigin ?? process.env.KEEL_DEV_ORIGIN });
+  const hostname = opts.host ?? '127.0.0.1';
+  const tls = opts.tls ? { createServer: createHttpsServer, serverOptions: { cert: opts.tls.cert, key: opts.tls.key } } : {};
   return new Promise((resolve) => {
-    serve({ fetch: app.fetch, port: opts.port, hostname: '127.0.0.1' }, () => {
-      console.log(`› keel is running at http://localhost:${opts.port}  (Ctrl+C to stop)`);
+    serve({ fetch: app.fetch, port: opts.port, hostname, ...tls }, () => {
+      const local = `${opts.tls ? 'https' : 'http'}://${hostname === '127.0.0.1' ? 'localhost' : hostname}:${opts.port}`;
+      if (opts.auth?.publicUrl) console.log(`› keel is running at ${opts.auth.publicUrl}, login on  (here: ${local})  (Ctrl+C to stop)`);
+      else console.log(`› keel is running at ${local}${opts.auth ? ', login on' : ''}  (Ctrl+C to stop)`);
       resolve();
     });
   });
