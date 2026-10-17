@@ -27,6 +27,8 @@ export type Scope = 'goals' | 'terminal';
 export interface AuthState {
   login: boolean;
   passkeys?: boolean;
+  /** Six-digit codes are turned on (`keel auth totp enable`). */
+  totp?: boolean;
   /** The public address passkeys belong to. */
   origin?: string;
   signedIn: { goals: boolean; terminal: boolean };
@@ -61,5 +63,6 @@ export const authApi = {
   pair: (token: string, response: RegistrationResponseJSON) => authPost<{ paired: string }>('/api/auth/pair/verify', { token, response }),
   signInOptions: () => authPost<{ options: PublicKeyCredentialRequestOptionsJSON }>('/api/auth/signin/options', {}),
   signIn: (scope: Scope, response: AuthenticationResponseJSON) => authPost<{ signedIn: Scope; ends: string }>('/api/auth/signin/verify', { scope, response }),
+  signInCode: (scope: Scope, code: string) => authPost<{ signedIn: Scope; ends: string }>('/api/auth/totp/verify', { scope, code }),
   signOut: () => authPost<{ signedOut: true }>('/api/auth/signout', {}),
 };

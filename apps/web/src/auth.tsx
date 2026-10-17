@@ -60,20 +60,49 @@ function Message({ tone, text, hint }: { tone: 'error' | 'muted' | 'done'; text:
   );
 }
 
+/** The six-digit code form, for the TOTP fallback. */
+function CodeForm({ busy, submit, first }: { busy: boolean; submit: (code: string) => void; first: boolean }) {
+  const [code, setCode] = useState('');
+  return (
+    <form
+      className="auth-code"
+      onSubmit={(e) => {
+        e.preventDefault();
+        submit(code);
+      }}
+    >
+      <label htmlFor="auth-code">Code from your authenticator app</label>
+      <input
+        id="auth-code"
+        inputMode="numeric"
+        autoComplete="one-time-code"
+        pattern="[0-9]{6}"
+        maxLength={6}
+        value={code}
+        onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
+        autoFocus={first}
+        required
+      />
+      <button className={first ? 'primary' : 'secondary'} type="submit" disabled={busy || code.length !== 6}>
+        {busy ? 'Checking...' : 'Sign in with code'}
+      </button>
+    </form>
+  );
+}
+
 /** The sign-in screen. On success it calls `done`, or goes to `next`. */
 export function SignIn({ scope, ended, done, next }: { scope: Scope; ended?: boolean; done?: () => void; next?: string }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<{ text: string; hint?: string } | null>(null);
   const [state, setState] = useState<AuthState | null>(null);
+  const [useCode, setUseCode] = useState(false);
   useEffect(() => void authApi.state().then(setState, () => setState(null)), []);
 
-  const signIn = async () => {
+  const attempt = async (signIn: () => Promise<unknown>) => {
     setBusy(true);
     setError(null);
     try {
-      const { options } = await authApi.signInOptions();
-      const response = await startAuthentication({ optionsJSON: options });
-      await authApi.signIn(scope, response);
+      await signIn();
       if (done) done();
       else window.location.assign(next ?? '/');
     } catch (e) {
@@ -82,26 +111,53 @@ export function SignIn({ scope, ended, done, next }: { scope: Scope; ended?: boo
       setBusy(false);
     }
   };
+  const withPasskey = () =>
+    attempt(async () => {
+      const { options } = await authApi.signInOptions();
+      await authApi.signIn(scope, await startAuthentication({ optionsJSON: options }));
+    });
+  const withCode = (code: string) => attempt(() => authApi.signInCode(scope, code));
 
   const what = scope === 'terminal' ? 'the browser terminal' : 'Goals';
   const supported = browserSupportsWebAuthn();
+  const wrongAddress = Boolean(state?.origin && state.origin !== window.location.origin);
+  const passkeyReady = Boolean(state?.passkeys) && !wrongAddress && supported;
+  // Why passkeys can't be used here. With codes on, that is a footnote, not a dead end.
+  const passkeyProblem = !state
+    ? null
+    : !state.passkeys
+      ? { text: 'Passkeys need a public address.', hint: 'Start keel serve with --public-url https://<your-tunnel-name>' }
+      : !supported
+        ? { text: "This browser can't use passkeys.", hint: 'Open this page in Safari, Chrome or Firefox on a phone or computer with a screen lock.' }
+        : null;
   return (
     <Shell label="sign in">
       <h1>Sign in to {what}</h1>
       {ended && <Message tone="muted" text="Your session ended." />}
-      {state && !state.passkeys ? (
-        <Message tone="error" text="Passkeys need a public address." hint="Start keel serve with --public-url https://<your-tunnel-name>" />
-      ) : state?.origin && state.origin !== window.location.origin ? (
-        <WrongAddress origin={state.origin} path={window.location.pathname + window.location.search} />
-      ) : !supported ? (
-        <Message tone="error" text="This browser can't use passkeys." hint="Open this page in Safari, Chrome or Firefox on a phone or computer with a screen lock." />
-      ) : (
+      {passkeyReady ? (
         <>
           <p className="auth-lead">Use the passkey you paired from your computer.</p>
-          <button className="primary" onClick={() => void signIn()} disabled={busy} autoFocus>
-            {busy ? 'Waiting for your passkey...' : 'Sign in with passkey'}
+          <button className="primary" onClick={() => void withPasskey()} disabled={busy} autoFocus>
+            {busy && !useCode ? 'Waiting for your passkey...' : 'Sign in with passkey'}
           </button>
+          {state?.totp &&
+            (useCode ? (
+              <CodeForm busy={busy} submit={(code) => void withCode(code)} first={false} />
+            ) : (
+              <button className="auth-link" onClick={() => setUseCode(true)}>
+                Use a code instead
+              </button>
+            ))}
         </>
+      ) : state?.totp ? (
+        <>
+          <CodeForm busy={busy} submit={(code) => void withCode(code)} first />
+          {wrongAddress && state.origin && <p className="auth-hint">Passkeys work at {state.origin}.</p>}
+        </>
+      ) : wrongAddress && state?.origin ? (
+        <WrongAddress origin={state.origin} path={window.location.pathname + window.location.search} />
+      ) : (
+        passkeyProblem && <Message tone="error" text={passkeyProblem.text} hint={passkeyProblem.hint} />
       )}
       {error && <Message tone="error" text={error.text} hint={error.hint} />}
       <p className="auth-foot">

@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { AuthStore, Keel } from '@keel/core';
+import { AuthStore, Keel, newTotpSecret, totpCode, totpStep } from '@keel/core';
 import { checkServe, createApp } from '../src/index';
 import { SoftAuthenticator } from './authenticator';
 
@@ -86,7 +86,7 @@ describe('with login on', () => {
   it('accepts the public hostname and refuses others', async () => {
     expect((await client({ host: 'evil.example' }).request('/api/auth/state')).status).toBe(403);
     expect((await client({ ...HOST, origin: 'https://evil.example' }).request('/api/auth/state')).status).toBe(403);
-    expect(await (await client().request('/api/auth/state')).json()).toEqual({ login: true, passkeys: true, origin: PUBLIC, signedIn: { goals: false, terminal: false } });
+    expect(await (await client().request('/api/auth/state')).json()).toEqual({ login: true, passkeys: true, totp: false, origin: PUBLIC, signedIn: { goals: false, terminal: false } });
   });
 });
 
@@ -236,7 +236,7 @@ describe('without login', () => {
   it('says so, so the browser terminal opens straight away', async () => {
     const plain = createApp({ keel, port: 4242 });
     const res = await plain.request('/api/auth/state', { headers: { host: '127.0.0.1:4242' } });
-    expect(await res.json()).toEqual({ login: false, signedIn: { goals: false, terminal: false } });
+    expect(await res.json()).toEqual({ login: false, passkeys: false, totp: false, signedIn: { goals: false, terminal: false } });
   });
 });
 
@@ -249,6 +249,69 @@ describe('without --public-url', () => {
       body: '{}',
     });
     expect(res.status).toBe(409);
+  });
+});
+
+describe('TOTP codes', () => {
+  const secret = newTotpSecret();
+  let clock: number;
+  beforeEach(() => {
+    clock = 1_700_000_000_000;
+    store = AuthStore.at(home, () => new Date(clock));
+    store.enableTotp(totpStep(clock) - 5);
+    app = createApp({ keel, port: 4242, auth: { store, publicUrl: PUBLIC, totpSecret: async () => secret, now: () => clock } });
+  });
+  const send = (browser: ReturnType<typeof client>, code: string, scope = 'terminal') => browser.request('/api/auth/totp/verify', { body: { scope, code } });
+
+  it('says codes are on, and signs in with one for 12 hours', async () => {
+    const browser = client();
+    expect(await (await browser.request('/api/auth/state')).json()).toMatchObject({ totp: true });
+    const res = await send(browser, totpCode(secret, clock));
+    expect(res.status).toBe(200);
+    expect(maxAge(res.headers.get('set-cookie')!)).toBeGreaterThan(12 * 3600 - 5);
+    expect(maxAge(res.headers.get('set-cookie')!)).toBeLessThanOrEqual(12 * 3600);
+    expect((await runToday(browser)).status).toBe(200);
+    expect(store.sessions()[0]).toMatchObject({ method: 'totp', passkeyId: null, scope: 'terminal' });
+  });
+
+  it('gives a Goals code sign-in 12 hours too, not 30 days', async () => {
+    const res = await send(client(), totpCode(secret, clock), 'goals');
+    expect(maxAge(res.headers.get('set-cookie')!)).toBeLessThanOrEqual(12 * 3600);
+  });
+
+  it('allows one step of clock drift, and refuses a used code (no replay)', async () => {
+    expect((await send(client(), totpCode(secret, clock - 30_000))).status).toBe(200);
+    const code = totpCode(secret, clock);
+    expect((await send(client(), code)).status).toBe(200);
+    const again = await send(client(), code);
+    expect(again.status).toBe(401);
+    expect(await again.json()).toMatchObject({ error: 'That code was already used.' });
+    // An older step is refused once a newer one was used.
+    expect((await send(client(), totpCode(secret, clock - 30_000))).status).toBe(401);
+    expect((await send(client(), totpCode(secret, clock + 60_000))).status).toBe(401);
+  });
+
+  it('slows down after five wrong codes in a minute', async () => {
+    for (let i = 0; i < 5; i++) expect((await send(client(), '000000')).status).toBe(401);
+    expect((await send(client(), totpCode(secret, clock))).status).toBe(429);
+    clock += 61_000;
+    expect((await send(client(), totpCode(secret, clock))).status).toBe(200);
+  });
+
+  it('works at any address, without --public-url', async () => {
+    const lan = createApp({ keel, port: 4242, host: '192.168.1.20', auth: { store, totpSecret: async () => secret, now: () => clock } });
+    const res = await lan.request('/api/auth/totp/verify', {
+      method: 'POST',
+      headers: { host: '192.168.1.20:4242', 'content-type': 'application/json' },
+      body: JSON.stringify({ scope: 'terminal', code: totpCode(secret, clock) }),
+    });
+    expect(res.status).toBe(200);
+  });
+
+  it('turns codes away once disabled', async () => {
+    store.disableTotp();
+    expect(await (await client().request('/api/auth/state')).json()).toMatchObject({ totp: false });
+    expect((await send(client(), totpCode(secret, clock))).status).toBe(409);
   });
 });
 
@@ -269,5 +332,10 @@ describe('keel serve refusal rules', () => {
     store.completePairing(store.createPairing('My iPhone', PUBLIC).token, { credentialId: 'c', publicKey: 'k', counter: 0, transports: [] });
     expect(checkServe({ host: '0.0.0.0', cert: 'c.pem', key: 'k.pem' }, store)).toEqual({ login: true });
     expect(checkServe({ host: '0.0.0.0', publicUrl: PUBLIC }, store)).toEqual({ login: true });
+  });
+
+  it('counts codes as a login for another address', () => {
+    store.enableTotp(1);
+    expect(checkServe({ host: '0.0.0.0', cert: 'c.pem', key: 'k.pem' }, store)).toEqual({ login: true });
   });
 });

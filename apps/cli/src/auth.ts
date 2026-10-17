@@ -1,14 +1,22 @@
-import { AuthStore, KeelError, PAIRING_TTL, fail, hint, ok, s, table, warn, type Block, type Paint, type Passkey, type Session } from '@keel/core';
+import { hostname } from 'node:os';
+import { AuthStore, KeelError, PAIRING_TTL, checkTotp, fail, hint, newTotpSecret, ok, s, table, totpUri, warn, type Block, type Paint, type Passkey, type Session } from '@keel/core';
 import { renderUnicodeCompact } from 'uqr';
+import type { SecretStore } from './secrets';
 
 // ADR 0002: phones are paired, listed and removed here, in the owner's terminal,
-// never from the browser. Sessions can be listed and ended here too.
+// never from the browser. Sessions can be listed and ended here too, and the
+// TOTP fallback turned on and off.
+
+/** The secret store entry for the TOTP secret. `keel serve` reads it from there. */
+export const TOTP_ACCOUNT = 'auth-totp';
 
 interface Io {
   paint: Paint;
   print(blocks: Block[]): void;
   /** Raw text, for the QR code. */
   write(text: string): void;
+  /** A line of input; '' when there is no terminal. */
+  ask?(prompt: string): Promise<string>;
 }
 
 export interface WaitOptions {
@@ -17,6 +25,14 @@ export interface WaitOptions {
   sleep?: (ms: number) => Promise<void>;
   /** Resolves when the user gives up (Ctrl+C). */
   cancelled?: Promise<void>;
+}
+
+export interface CommandOptions extends WaitOptions {
+  /** Where the TOTP secret goes. */
+  secrets?: SecretStore;
+  /** The account name the authenticator app shows. Defaults to this computer's name. */
+  account?: string;
+  now?: () => number;
 }
 
 const pad = (n: number) => String(n).padStart(2, '0');
@@ -61,6 +77,7 @@ export function authStatus(store: AuthStore, io: Io): number {
   const hosts = [...new Set(passkeys.map((p) => p.rpId))];
   io.print([
     line('Passkeys', passkeys.length ? `${passkeys.length} (for ${hosts.join(', ')})` : 'none'),
+    line('Codes', store.totp() ? 'on (keel auth totp disable turns them off)' : 'off'),
     line('Sessions', String(sessions.length)),
     line('Server', server ? `keel serve at ${server.publicUrl}` : 'keel serve is not running with a public address'),
     ...(passkeys.length ? [] : [hint(server ? 'Pair your phone: keel auth passkey add' : 'Pair your phone: start keel serve --public-url https://<your-tunnel-name>, then keel auth passkey add')]),
@@ -134,6 +151,49 @@ export async function passkeyAdd(store: AuthStore, args: string[], io: Io, wait:
   }
 }
 
+/** Shows a QR code for the authenticator app, and turns codes on once a code from it checks out. */
+export async function totpEnable(store: AuthStore, io: Io, options: CommandOptions): Promise<number> {
+  if (store.totp()) throw new KeelError('Codes are already on.', 'To start over: keel auth totp disable, then keel auth totp enable');
+  const { secrets } = options;
+  if (!secrets || !io.ask) throw new KeelError('Turning codes on needs a terminal.');
+  const now = options.now ?? Date.now;
+  const secret = newTotpSecret();
+  io.print([ok('Scan this with your authenticator app (1Password, Google Authenticator, Authy...)')]);
+  io.write(renderUnicodeCompact(totpUri(secret, options.account ?? hostname()), { border: 2 }));
+  io.print([hint(`Or type this key: ${secret.match(/.{1,4}/g)!.join(' ')}`), hint('Time-based, 6 digits, every 30 seconds.')]);
+
+  for (let tries = 0; tries < 3; tries++) {
+    const code = (await io.ask('Code from the app:')).trim();
+    if (!code) break;
+    const step = checkTotp(secret, code, now());
+    if (step === null) {
+      io.print([warn("That code isn't right. Check the app shows Keel, then try the next code.")]);
+      continue;
+    }
+    await secrets.set(TOTP_ACCOUNT, secret, 'Keel sign-in code key');
+    store.enableTotp(step);
+    io.print([
+      ok('Codes are on.'),
+      hint('The sign-in page now offers "Use a code instead". A code sign-in lasts 12 hours.'),
+      hint(`The key is in ${secrets.label}. There are no recovery codes: this terminal is the way back in.`),
+    ]);
+    return 0;
+  }
+  io.print([fail('Codes are still off.'), hint('Run keel auth totp enable again.')]);
+  return 1;
+}
+
+export async function totpDisable(store: AuthStore, io: Io, options: CommandOptions): Promise<number> {
+  if (!store.totp()) {
+    io.print([warn('Codes are already off.')]);
+    return 0;
+  }
+  await options.secrets?.delete(TOTP_ACCOUNT);
+  const ended = store.disableTotp();
+  io.print([ok('Codes are off.'), hint(ended ? `Ended ${ended} session${ended === 1 ? '' : 's'} a code had started.` : 'No code sessions were open.')]);
+  return 0;
+}
+
 export function sessionsCommand(store: AuthStore, args: string[], io: Io): number {
   if (args[0] === 'revoke') {
     if (args[1] === '--all') {
@@ -157,15 +217,20 @@ export function sessionsCommand(store: AuthStore, args: string[], io: Io): numbe
 }
 
 /** `keel auth ...` */
-export async function authCommand(store: AuthStore, args: string[], io: Io, wait?: WaitOptions): Promise<number> {
+export async function authCommand(store: AuthStore, args: string[], io: Io, options: CommandOptions = {}): Promise<number> {
   const [group, action, ...rest] = args;
   if (!group || group === 'status') return authStatus(store, io);
   if (group === 'sessions') return sessionsCommand(store, [action, ...rest].filter((a): a is string => a !== undefined), io);
   if (group === 'passkey') {
     if (!action || action === 'list') return passkeyList(store, io);
-    if (action === 'add') return passkeyAdd(store, rest, io, wait);
+    if (action === 'add') return passkeyAdd(store, rest, io, options);
     if (action === 'remove') return passkeyRemove(store, rest[0], io);
     throw new KeelError(`Unknown "auth passkey ${action}".`, 'Try: keel auth passkey add, list, remove <name or id>');
   }
-  throw new KeelError(`Unknown "auth ${group}".`, 'Try: keel auth, keel auth passkey add|list|remove, keel auth sessions');
+  if (group === 'totp') {
+    if (action === 'enable') return totpEnable(store, io, options);
+    if (action === 'disable') return totpDisable(store, io, options);
+    throw new KeelError(`Unknown "auth totp${action ? ` ${action}` : ''}".`, 'Try: keel auth totp enable, keel auth totp disable');
+  }
+  throw new KeelError(`Unknown "auth ${group}".`, 'Try: keel auth, keel auth passkey add|list|remove, keel auth totp enable|disable, keel auth sessions');
 }

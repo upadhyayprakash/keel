@@ -70,9 +70,9 @@ const PROGRAM: Array<{ usage: string; summary: string; examples: string[] }> = [
   },
   { usage: 'keel db | keel db connect <address> | keel db disconnect', summary: 'Show where your data lives, or sync it across devices.', examples: ['keel db', 'keel db connect libsql://keel-<you>.turso.io', 'keel db disconnect'] },
   {
-    usage: 'keel auth | keel auth passkey add|list|remove | keel auth sessions [revoke <id>|--all]',
-    summary: 'Pair your phone with a passkey for keel serve --public-url, and see or end its sessions.',
-    examples: ['keel auth', 'keel auth passkey add --name "My iPhone"', 'keel auth passkey remove "My iPhone"', 'keel auth sessions revoke --all'],
+    usage: 'keel auth | keel auth passkey add|list|remove | keel auth totp enable|disable | keel auth sessions [revoke <id>|--all]',
+    summary: 'Pair your phone with a passkey for keel serve --public-url, turn six-digit codes on as a fallback, and see or end sessions.',
+    examples: ['keel auth', 'keel auth passkey add --name "My iPhone"', 'keel auth passkey remove "My iPhone"', 'keel auth totp enable', 'keel auth sessions revoke --all'],
   },
   { usage: 'keel completion zsh|bash', summary: 'Print the shell completion script.', examples: ['echo \'eval "$(keel completion zsh)"\' >> ~/.zshrc'] },
   { usage: 'keel --version', summary: 'Print the installed version.', examples: ['keel --version'] },

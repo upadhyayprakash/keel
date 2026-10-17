@@ -3,10 +3,11 @@ import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { createInterface } from 'node:readline/promises';
 import { AuthStore, autoBackup, fail, hint, Keel, KeelError, parsePublicUrl, renderText, VERSION, warn, type AutoBackupOptions } from '@keel/core';
-import { authCommand } from './auth';
+import { authCommand, TOTP_ACCOUNT } from './auth';
 import { dbConnect, dbDisconnect, dbStatus, storageOptions, terminalIo } from './db';
 import { completionScript, formatSuggestions, isShell } from './completion';
 import { runCommand } from './run';
+import { secretStore } from './secrets';
 import { questionAsker, runShell } from './shell';
 import { ansiPaint, argvToLine, banner, needsProbe, probeBackground, resolveTheme, useColor } from './terminal';
 
@@ -73,10 +74,23 @@ async function main(): Promise<number> {
   // keel auth: pair phones with passkeys and manage sessions, from this terminal only (ADR 0002).
   if (args[0] === 'auth') {
     const color = useColor(process.env, Boolean(process.stdout.isTTY));
-    const io = { ...terminalIo(color ? ansiPaint(resolveTheme(process.env, null)) : (text) => text, color), write: (text: string) => process.stdout.write(text + '\n') };
+    const paint = color ? ansiPaint(resolveTheme(process.env, null)) : (text: string) => text;
+    const io = {
+      ...terminalIo(paint, color),
+      write: (text: string) => process.stdout.write(text + '\n'),
+      async ask(prompt: string) {
+        if (!process.stdin.isTTY) return '';
+        const rl = createInterface({ input: process.stdin, output: process.stdout });
+        try {
+          return await rl.question(`${paint('│', { tone: 'muted' })} ${paint(prompt, { tone: 'accent', bold: true })} `);
+        } finally {
+          rl.close();
+        }
+      },
+    };
     const cancelled = new Promise<void>((resolve) => process.once('SIGINT', () => resolve()));
     try {
-      return await authCommand(AuthStore.at(HOME), args.slice(1), io, { cancelled });
+      return await authCommand(AuthStore.at(HOME), args.slice(1), io, { cancelled, secrets: await secretStore(HOME) });
     } catch (e) {
       if (!(e instanceof KeelError)) throw e;
       io.print([fail(e.message), ...(e.hint ? [hint(e.hint)] : [])]);
@@ -128,7 +142,9 @@ async function main(): Promise<number> {
         process.on('exit', () => store.clearServerInfo(process.pid));
         for (const signal of ['SIGINT', 'SIGTERM'] as const) process.once(signal, () => process.exit(0));
       }
-      await startServer({ keel, port, host, tls, auth: login ? { store, publicUrl } : undefined });
+      const secrets = await secretStore(HOME);
+      const totpSecret = () => secrets.get(TOTP_ACCOUNT);
+      await startServer({ keel, port, host, tls, auth: login ? { store, publicUrl, totpSecret } : undefined });
       return new Promise<number>(() => {}); // runs until Ctrl+C
     }
 

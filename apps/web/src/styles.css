@@ -323,9 +323,63 @@ pre.raw {
   cursor: pointer;
 }
 
-.primary:disabled {
+.primary:disabled,
+.secondary:disabled {
   opacity: 0.6;
   cursor: default;
+}
+
+.secondary {
+  display: block;
+  width: 100%;
+  height: 44px;
+  border: 1px solid var(--t-accent);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--t-accent);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.auth-link {
+  align-self: center;
+  border: 0;
+  background: none;
+  color: var(--t-muted);
+  font: inherit;
+  font-size: 13px;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.auth-code {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.auth-code label {
+  color: var(--t-muted);
+  font-size: 12px;
+}
+
+.auth-code input {
+  height: 48px;
+  padding: 0 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  color: var(--t-default);
+  font: inherit;
+  font-size: 22px;
+  letter-spacing: 0.3em;
+  text-align: center;
+}
+
+.auth-code input:focus {
+  outline: 2px solid var(--t-accent);
+  outline-offset: 1px;
 }
 
 @media (max-width: 600px) {

@@ -2,8 +2,8 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { AuthStore, renderText, type Block } from '@keel/core';
-import { authCommand } from '../src/auth';
+import { AuthStore, renderText, totpCode, totpStep, type Block } from '@keel/core';
+import { authCommand, TOTP_ACCOUNT } from '../src/auth';
 
 const URL = 'https://keel.example.ts.net';
 const credential = (n = 1) => ({ credentialId: `cred-${n}`, publicKey: `key-${n}`, counter: 0, transports: ['internal'] });
@@ -150,5 +150,78 @@ describe('keel auth', () => {
   it('explains unknown subcommands', async () => {
     await expect(run('totp')).rejects.toThrow('Unknown "auth totp"');
     await expect(run('passkey', 'rename')).rejects.toThrow('Unknown "auth passkey rename"');
+  });
+});
+
+describe('keel auth totp', () => {
+  const NOW = 1_700_000_000_000;
+  /** An in-memory secret store and a terminal that answers with the given lines. */
+  type Answer = string | (() => string);
+  const setup = (answers: (key: () => string) => Answer[]) => {
+    const saved = new Map<string, string>();
+    const secrets = {
+      label: 'a test store',
+      fallback: false,
+      get: async (account: string) => saved.get(account) ?? null,
+      set: async (account: string, secret: string) => void saved.set(account, secret),
+      delete: async (account: string) => void saved.delete(account),
+    };
+    const key = () => /Or type this key: ([A-Z2-7 ]+)/.exec(text())![1]!.replace(/ /g, '');
+    const queue = answers(key);
+    const terminal = {
+      ...io,
+      ask: async () => {
+        const answer = queue.shift() ?? '';
+        return typeof answer === 'function' ? answer() : answer;
+      },
+    };
+    const totp = (...args: string[]) => authCommand(store, ['totp', ...args], terminal, { secrets, account: 'my-mac', now: () => NOW });
+    return { saved, totp };
+  };
+
+  it('shows a QR code and the key, and turns codes on after a right code', async () => {
+    // The right code is worked out from the key the terminal printed.
+    const { saved, totp } = setup((key) => ['000000', () => totpCode(key(), NOW)]);
+    const result = await totp('enable');
+    expect(result).toBe(0);
+    expect(text()).toMatch(/[▀▄█]/);
+    expect(text()).toContain("That code isn't right");
+    expect(text()).toContain('Codes are on.');
+    expect(saved.get(TOTP_ACCOUNT)).toMatch(/^[A-Z2-7]{32}$/);
+    expect(store.totp()?.lastStep).toBe(totpStep(NOW));
+  });
+
+  it('stays off after three wrong codes, or when there is no answer', async () => {
+    const wrong = setup(() => ['000000', '111111', '222222']);
+    expect(await wrong.totp('enable')).toBe(1);
+    expect(text()).toContain('Codes are still off.');
+    expect(store.totp()).toBeNull();
+    expect(wrong.saved.size).toBe(0);
+    out = [];
+    expect(await setup(() => []).totp('enable')).toBe(1);
+  });
+
+  it('refuses to enable twice, and disabling removes the key and ends code sessions', async () => {
+    const { saved, totp } = setup(() => []);
+    saved.set(TOTP_ACCOUNT, 'KEY');
+    store.enableTotp(1);
+    store.createSession({ passkeyId: null, method: 'totp', scope: 'goals' });
+    await expect(totp('enable')).rejects.toThrow('Codes are already on.');
+    expect(await totp('disable')).toBe(0);
+    expect(text()).toContain('Ended 1 session a code had started.');
+    expect(saved.size).toBe(0);
+    expect(store.totp()).toBeNull();
+    out = [];
+    expect(await totp('disable')).toBe(0);
+    expect(text()).toContain('Codes are already off.');
+  });
+
+  it('shows codes in keel auth', async () => {
+    await run();
+    expect(text()).toMatch(/Codes\s+off/);
+    store.enableTotp(1);
+    out = [];
+    await run();
+    expect(text()).toMatch(/Codes\s+on/);
   });
 });

@@ -59,7 +59,7 @@ export function createApp({ keel, port, webDist = DEFAULT_DIST, devOrigin, auth,
   // With login on, every API call needs a session, whatever address it came from:
   // a tunnel forwards to 127.0.0.1, so the source address proves nothing. Goals
   // routes take a Goals or terminal session; the browser terminal's take a terminal one.
-  if (!auth) app.get('/api/auth/state', (c) => c.json({ login: false, signedIn: { goals: false, terminal: false } }));
+  if (!auth) app.get('/api/auth/state', (c) => c.json({ login: false, passkeys: false, totp: false, signedIn: { goals: false, terminal: false } }));
   if (auth) {
     authRoutes(app, auth);
     const goals = requireSession(auth.store, 'goals');

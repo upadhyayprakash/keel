@@ -9,7 +9,8 @@ export interface SecretStore {
   /** True when Keel fell back to this store because no system one was found, so it should say so. */
   fallback: boolean;
   get(account: string): Promise<string | null>;
-  set(account: string, secret: string): Promise<void>;
+  /** `label` is what the Keychain or keyring shows for the entry. */
+  set(account: string, secret: string, label?: string): Promise<void>;
   delete(account: string): Promise<void>;
 }
 
@@ -44,10 +45,11 @@ const keychain: SecretStore = {
     const r = await run('security', ['find-generic-password', '-s', SERVICE, '-a', account, '-w']);
     return r.code === 0 ? r.stdout.trim() || null : null;
   },
-  async set(account, secret) {
+  async set(account, secret, label = 'Keel database token') {
     checkSafe(secret);
     checkSafe(account);
-    const r = await run('security', ['-i'], `add-generic-password -U -s ${SERVICE} -a "${account}" -l "Keel database token" -w "${secret}"\n`);
+    if (!/^[\w ]+$/.test(label)) throw new Error('Unexpected label.');
+    const r = await run('security', ['-i'], `add-generic-password -U -s ${SERVICE} -a "${account}" -l "${label}" -w "${secret}"\n`);
     if (r.code !== 0) throw new Error('Could not save the token in the Keychain.');
   },
   async delete(account) {
@@ -63,8 +65,8 @@ const secretTool: SecretStore = {
     const r = await run('secret-tool', ['lookup', 'service', SERVICE, 'account', account]);
     return r.code === 0 ? r.stdout.trim() || null : null;
   },
-  async set(account, secret) {
-    const r = await run('secret-tool', ['store', '--label', 'Keel database token', 'service', SERVICE, 'account', account], secret);
+  async set(account, secret, label = 'Keel database token') {
+    const r = await run('secret-tool', ['store', '--label', label, 'service', SERVICE, 'account', account], secret);
     if (r.code !== 0) throw new Error('Could not save the token in the system keyring.');
   },
   async delete(account) {

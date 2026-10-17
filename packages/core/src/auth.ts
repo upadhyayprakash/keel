@@ -72,7 +72,14 @@ export interface ServerInfo {
   startedAt: string;
 }
 
-const FILES = { passkeys: 'passkeys.json', pairings: 'pairings.json', sessions: 'sessions.json', server: 'server.json' };
+/** TOTP is on when this exists. The secret itself is in the secret store, never here. */
+export interface TotpState {
+  enabledAt: string;
+  /** The last time step a code was accepted for; that step and earlier ones are refused (no replay). */
+  lastStep: number;
+}
+
+const FILES = { passkeys: 'passkeys.json', pairings: 'pairings.json', sessions: 'sessions.json', server: 'server.json', totp: 'totp.json' };
 
 export const hashToken = (token: string) => createHash('sha256').update(token).digest('hex');
 const newToken = () => randomBytes(32).toString('base64url');
@@ -312,6 +319,34 @@ export class AuthStore {
     const count = this.sessions().length;
     this.write(FILES.sessions, []);
     return count;
+  }
+
+  // ---- TOTP ----
+
+  totp(): TotpState | null {
+    return this.read<TotpState | null>(FILES.totp, null);
+  }
+
+  /** After the confirming code; that code's step counts as used. */
+  enableTotp(step: number): void {
+    this.write(FILES.totp, { enabledAt: this.iso(), lastStep: step } satisfies TotpState);
+  }
+
+  /** Turns TOTP off and ends every session a code started. Returns how many. */
+  disableTotp(): number {
+    rmSync(join(this.dir, FILES.totp), { force: true });
+    const sessions = this.read<Session[]>(FILES.sessions, []);
+    const kept = sessions.filter((s) => s.method !== 'totp');
+    if (kept.length !== sessions.length) this.write(FILES.sessions, kept);
+    return sessions.length - kept.length;
+  }
+
+  /** Marks a code's step as used. False when it, or a later one, was used already. */
+  useTotpStep(step: number): boolean {
+    const state = this.totp();
+    if (!state || step <= state.lastStep) return false;
+    this.write(FILES.totp, { ...state, lastStep: step });
+    return true;
   }
 
   // ---- the running server ----

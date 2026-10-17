@@ -9,7 +9,7 @@ import {
 import { randomBytes } from 'node:crypto';
 import type { Context, Hono, MiddlewareHandler } from 'hono';
 import { deleteCookie, getCookie, setCookie } from 'hono/cookie';
-import { KeelError, parsePublicUrl, type AuthStore, type Session, type SessionScope } from '@keel/core';
+import { checkTotp, KeelError, parsePublicUrl, type AuthStore, type Session, type SessionScope } from '@keel/core';
 
 // ADR 0002: passkey login when `keel serve` leaves localhost. Pairing needs a
 // one-time token from `keel auth passkey add`; sign-in uses a discoverable
@@ -20,6 +20,8 @@ export interface AuthOptions {
   store: AuthStore;
   /** `--public-url`: the passkey hostname and expected origin. Without it, passkeys can't be used. */
   publicUrl?: string;
+  /** Reads the TOTP secret from the secret store, when `keel auth totp enable` has set one. */
+  totpSecret?: () => Promise<string | null>;
   /** For tests. */
   now?: () => number;
 }
@@ -28,6 +30,8 @@ export const COOKIES: Record<SessionScope, string> = { goals: 'keel_goals', term
 const CHALLENGE_TTL = 5 * 60_000;
 /** Failed pairings and sign-ins allowed per minute before Keel answers 429. */
 const MAX_FAILURES = 10;
+/** Wrong TOTP codes allowed per minute before Keel slows down (ADR 0002). */
+const MAX_WRONG_CODES = 5;
 
 type Json = Record<string, unknown>;
 const isScope = (value: unknown): value is SessionScope => value === 'goals' || value === 'terminal';
@@ -47,7 +51,8 @@ function setSession(c: Context, scope: SessionScope, token: string, session: Ses
     secure: true,
     sameSite: 'Lax', // Lax, so a link from a cue notification still carries the session; Origin checks block cross-site writes
     path: '/',
-    maxAge: Math.floor((Date.parse(session.expiresAt) - Date.now()) / 1000),
+    // From the session's own times (just started or renewed), so it matches the store's clock.
+    maxAge: Math.floor((Date.parse(session.expiresAt) - Date.parse(session.lastUsedAt)) / 1000),
   });
 }
 
@@ -73,16 +78,19 @@ export function requireSession(store: AuthStore, scope: SessionScope): Middlewar
 }
 
 /** Adds /api/auth/*: state, pairing, sign-in and sign-out. */
-export function authRoutes(app: Hono, { store, publicUrl, now = Date.now }: AuthOptions): void {
+export function authRoutes(app: Hono, { store, publicUrl, totpSecret, now = Date.now }: AuthOptions): void {
   const rp = publicUrl ? parsePublicUrl(publicUrl) : null;
   /** Challenges handed out and not used yet: single use, 5 minutes. Pairing ones are tied to their pairing. */
   const challenges = new Map<string, { expires: number; pairingId: string | null }>();
   const failures: number[] = [];
+  const wrongCodes: number[] = [];
 
-  const tooMany = () => {
-    while (failures.length && failures[0]! <= now() - 60_000) failures.shift();
-    return failures.length >= MAX_FAILURES;
+  /** Drops entries older than a minute, then says whether the limit is reached. */
+  const full = (list: number[], max: number) => {
+    while (list.length && list[0]! <= now() - 60_000) list.shift();
+    return list.length >= max;
   };
+  const tooMany = () => full(failures, MAX_FAILURES);
   const failed = () => failures.push(now());
   const issue = (challenge: string, pairingId: string | null) => {
     for (const [key, value] of challenges) if (value.expires <= now()) challenges.delete(key);
@@ -101,6 +109,7 @@ export function authRoutes(app: Hono, { store, publicUrl, now = Date.now }: Auth
     c.json({
       login: true,
       passkeys: Boolean(rp),
+      totp: Boolean(totpSecret && store.totp()),
       // Passkeys only work at this address, so the page can send people there.
       ...(rp ? { origin: rp.origin } : {}),
       signedIn: { goals: Boolean(currentSession(c, store, 'goals')), terminal: Boolean(currentSession(c, store, 'terminal')) },
@@ -215,6 +224,27 @@ export function authRoutes(app: Hono, { store, publicUrl, now = Date.now }: Auth
     return c.json({ signedIn: scope, ends: session.expiresAt });
   });
 
+  // ---- TOTP fallback: a six-digit code, at any address (ADR 0002) ----
+
+  app.post('/api/auth/totp/verify', async (c) => {
+    const secret = totpSecret && store.totp() ? await totpSecret() : null;
+    if (!secret) return problem(c, 409, "Codes aren't turned on.", 'On your computer: keel auth totp enable');
+    if (full(wrongCodes, MAX_WRONG_CODES)) return slowDown(c);
+    const input = await body(c);
+    if (!input) return problem(c, 415, 'Expected JSON');
+    const scope = input.scope ?? 'goals';
+    if (!isScope(scope)) return problem(c, 400, 'Unknown scope.');
+    const step = checkTotp(secret, String(input.code ?? ''), now());
+    if (step === null) {
+      wrongCodes.push(now());
+      return problem(c, 401, "That code isn't right.", 'Check the time on your phone, then try the next code.');
+    }
+    if (!store.useTotpStep(step)) return problem(c, 401, 'That code was already used.', 'Wait for the next code.');
+    const { session, token } = store.createSession({ passkeyId: null, method: 'totp', scope });
+    setSession(c, scope, token, session);
+    return c.json({ signedIn: scope, ends: session.expiresAt });
+  });
+
   app.post('/api/auth/signout', async (c) => {
     for (const scope of Object.keys(COOKIES) as SessionScope[]) {
       const token = getCookie(c, COOKIES[scope]);
@@ -247,8 +277,11 @@ export function checkServe({ host, publicUrl, cert, key }: ServeCheck, store: Au
   if (!cert && !publicUrl) {
     throw new KeelError(`Keel won't listen on ${host} without HTTPS.`, 'Add --cert and --key, or put it behind an HTTPS tunnel with --public-url https://<your-tunnel-name>');
   }
-  if (!store.passkeys().length) {
-    throw new KeelError(`Keel won't listen on ${host} before a login is set up.`, 'Pair your phone first: keel serve --public-url https://<your-tunnel-name> (on this machine), then keel auth passkey add');
+  if (!store.passkeys().length && !store.totp()) {
+    throw new KeelError(
+      `Keel won't listen on ${host} before a login is set up.`,
+      'Pair your phone first: keel serve --public-url https://<your-tunnel-name> (on this machine), then keel auth passkey add. Or turn on codes: keel auth totp enable',
+    );
   }
   return { login: true };
 }
