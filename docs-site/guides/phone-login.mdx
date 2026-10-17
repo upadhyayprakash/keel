@@ -95,6 +95,12 @@ Nothing changes unless you follow these steps. Plain `keel serve` still opens on
     keel auth totp enable
     ```
 
+    The app lists the entry under this computer's name. To use another name, so screenshots of the QR code don't show the computer's name, add `--label`:
+
+    ```bash
+    keel auth totp enable --label "Keel"
+    ```
+
     Scan the QR code with the app, then type the code it shows. The sign-in page now offers **Use a code instead**. At an address where passkeys can't work, it shows the code box straight away:
 
     <div style={{ maxWidth: '300px' }}>

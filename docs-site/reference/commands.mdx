@@ -429,14 +429,14 @@ keel db disconnect
 Pair your phone with a passkey for keel serve --public-url, turn six-digit codes on as a fallback, and see or end sessions.
 
 ```text Usage
-keel auth | keel auth passkey add|list|remove | keel auth totp enable|disable | keel auth sessions [revoke <id>|--all]
+keel auth | keel auth passkey add|list|remove | keel auth totp enable [--label <name>]|disable | keel auth sessions [revoke <id>|--all]
 ```
 
 ```bash Examples
 keel auth
 keel auth passkey add --name "My iPhone"
 keel auth passkey remove "My iPhone"
-keel auth totp enable
+keel auth totp enable --label "Keel"
 keel auth sessions revoke --all
 ```
 

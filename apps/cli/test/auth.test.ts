@@ -192,6 +192,18 @@ describe('keel auth totp', () => {
     expect(store.totp()?.lastStep).toBe(totpStep(NOW));
   });
 
+  it('names the entry after this computer, or after --label', async () => {
+    const plain = setup(() => []);
+    await plain.totp('enable');
+    expect(text()).toContain('The app lists it as Keel (my-mac).');
+    out = [];
+    const labelled = setup(() => []);
+    await labelled.totp('enable', '--label', 'Keel at home');
+    expect(text()).toContain('The app lists it as Keel (Keel at home).');
+    expect(text()).not.toContain('my-mac');
+    await expect(labelled.totp('enable', '--label')).rejects.toThrow('--label needs a value.');
+  });
+
   it('stays off after three wrong codes, or when there is no answer', async () => {
     const wrong = setup(() => ['000000', '111111', '222222']);
     expect(await wrong.totp('enable')).toBe(1);
