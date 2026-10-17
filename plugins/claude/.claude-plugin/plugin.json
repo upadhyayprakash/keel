@@ -1,0 +1,10 @@
+{
+  "name": "keel",
+  "version": "0.1.0",
+  "description": "Save promises, follow-ups and deadlines to Keel in plain words, and ask what's on today. Uses the keel CLI with --json.",
+  "author": { "name": "Prakash Upadhyay" },
+  "homepage": "https://nouisi-keel.mintlify.site",
+  "repository": "https://github.com/upadhyayprakash/keel",
+  "license": "MIT",
+  "keywords": ["keel", "productivity", "commitments", "todo", "deadlines"]
+}

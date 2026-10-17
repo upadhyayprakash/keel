@@ -4,6 +4,14 @@ All notable changes to Keel. The format follows [Keep a Changelog](https://keepa
 
 ## [Unreleased]
 
+### Added
+
+- A Claude Code plugin in `plugins/claude`, installable with `/plugin marketplace add upadhyayprakash/keel`: `/keel:capture` saves what you say (owe, wait, done, new dates, resume notes) through the keel CLI, and `/keel:today` answers what's on. It never deletes and always names the project.
+
+### Fixed
+
+- Dates outside the current year show their year (`Sat 16 Oct 2027`), in lists, `show`, confirmations and history. They used to show only the day and month, so a date next year looked like one this year. `show` no longer repeats the date in brackets when it's more than a week away.
+
 ## [0.3.1] - 2026-10-13
 
 ### Fixed

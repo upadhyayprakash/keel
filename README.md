@@ -58,6 +58,17 @@ Tab completion for people, projects, refs and dates:
 echo 'eval "$(keel completion zsh)"' >> ~/.zshrc     # or: keel completion bash >> ~/.bashrc
 ```
 
+## Claude Code plugin
+
+Tell Claude what you owe, what you're waiting on and what's due, in plain words, and it saves it to Keel. Ask "what's on today?" and it reads Keel back. It runs the `keel` CLI with `--json`, so install Keel first.
+
+```bash
+/plugin marketplace add upadhyayprakash/keel
+/plugin install keel@keel
+```
+
+Then `/keel:capture I promised Ravi the pricing deck by Thursday for +acme/website`, or `/keel:today`. Details in [plugins/claude](plugins/claude/README.md).
+
 ## Your data
 
 - It lives in `~/.keel/keel.db`. Change it with `KEEL_DB_URL` (see `.env.example`).
