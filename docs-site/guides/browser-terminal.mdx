@@ -22,45 +22,4 @@ By default it only listens on your own machine and needs no login. Stop it with 
 
 ## Open it from your phone
 
-To reach Keel from your phone, put it behind an HTTPS tunnel (Tailscale Funnel, Cloudflare Tunnel or similar) and give Keel the tunnel's address:
-
-```bash
-keel serve --public-url https://keel.example.ts.net
-```
-
-Login is now required on every request, even from your own machine. In another terminal, pair your phone:
-
-```bash
-keel auth passkey add --name "My iPhone"
-```
-
-It prints a QR code. Scan it with your phone, tap **Create passkey** and approve with Face ID, a fingerprint or your screen lock. From then on, the sign-in page needs one tap. A sign-in to the browser terminal lasts 12 hours.
-
-<Note>
-Passkeys only work at the `--public-url` address, not at `localhost` or a LAN IP. The sign-in page tells you when you are at the wrong address and links to the right one.
-</Note>
-
-## Codes as a fallback
-
-For a browser without passkeys, or a LAN address, turn on six-digit codes from an authenticator app:
-
-```bash
-keel auth totp enable
-```
-
-Scan the QR code with the app and type one code to confirm. The sign-in page then offers **Use a code instead**. A code works once, and a code sign-in lasts 12 hours. `keel auth totp disable` turns codes off and ends the sessions they started.
-
-There are no recovery codes: your own terminal is the way back in. Lost your phone? Run `keel auth passkey remove "My iPhone"`, which also ends its sessions.
-
-## See and end sessions
-
-```bash
-keel auth                     # what is set up
-keel auth passkey list
-keel auth sessions
-keel auth sessions revoke --all
-```
-
-## Listen beyond this machine
-
-`keel serve --host 0.0.0.0` refuses to start until a login is set up (a passkey or codes) and the connection is HTTPS: `--cert` and `--key`, or `--public-url` for a tunnel in front.
+`keel serve` can also be reached from your phone, with a passkey (Face ID or a fingerprint) as the login. Follow [Use Keel from your phone](/guides/phone-login) to set it up in about 15 minutes, and see [How login works](/guides/how-login-works) for what happens behind each step.

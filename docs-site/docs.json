@@ -55,6 +55,10 @@
         ]
       },
       {
+        "group": "Phone and login",
+        "pages": ["guides/phone-login", "guides/how-login-works"]
+      },
+      {
         "group": "Reference",
         "pages": ["reference/commands", "reference/syntax", "reference/json", "reference/environment"]
       },

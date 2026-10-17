@@ -1,0 +1,178 @@
+---
+title: "Use Keel from your phone"
+description: "A step-by-step tutorial: put keel serve behind an HTTPS tunnel, pair your phone with a passkey, and sign in with Face ID."
+---
+
+By the end of this tutorial you can open Keel on your phone, from anywhere, and sign in with one tap of Face ID or a fingerprint. Your data stays on your own computer; the phone only reaches it through a private HTTPS address.
+
+<Frame>
+  <img className="block dark:hidden" src="/images/login/overview-light.svg" alt="Your phone reaches keel serve on your computer through an HTTPS tunnel. Logins are kept in ~/.keel/auth and the Keychain, and only your terminal can add or remove them." />
+  <img className="hidden dark:block" src="/images/login/overview-dark.svg" alt="Your phone reaches keel serve on your computer through an HTTPS tunnel. Logins are kept in ~/.keel/auth and the Keychain, and only your terminal can add or remove them." />
+</Frame>
+
+<Note>
+Nothing changes unless you follow these steps. Plain `keel serve` still opens on your own computer with no login, and every `keel` command works as before.
+</Note>
+
+**You need:** Keel installed on a Mac or Linux computer that stays on while you want to use it, a phone with a screen lock (Face ID, a fingerprint or a PIN), and about 15 minutes.
+
+<Steps>
+  <Step title="Update Keel">
+    ```bash
+    npm install -g @nouisi/keel
+    keel auth
+    ```
+
+    `keel auth` shows what is set up. On a fresh install it says there are no passkeys yet.
+  </Step>
+
+  <Step title="Give your computer an HTTPS address">
+    Passkeys only work over HTTPS at a real name, so the phone needs an address like `https://my-mac.tail1234.ts.net`. This tutorial uses [Tailscale Funnel](https://tailscale.com/kb/1223/funnel): free, nothing to buy, and the name never changes.
+
+    1. Install [Tailscale](https://tailscale.com/download) and sign in.
+    2. On a Mac, Tailscale asks for permission to add a system extension. Open **System Settings → Privacy & Security**, scroll to the message about software from "Tailscale Inc." and click **Allow**.
+    3. Turn on Funnel for Keel's port:
+
+    ```bash
+    tailscale funnel --bg 4242
+    ```
+
+    The first time, it prints a link to turn on HTTPS and Funnel for your account. Open it, approve, and run the command again. It then prints your address:
+
+    ```text
+    Available on the internet:
+    https://my-mac.tail1234.ts.net/
+    |-- proxy http://127.0.0.1:4242
+    ```
+
+    <Tip>
+    Keep this name. A passkey belongs to one address, so a new name means pairing the phone again. Another tunnel (for example a Cloudflare named tunnel on your own domain) works the same way.
+    </Tip>
+  </Step>
+
+  <Step title="Start Keel with that address">
+    ```bash
+    keel serve --public-url https://my-mac.tail1234.ts.net
+    ```
+
+    It prints `keel is running at https://my-mac.tail1234.ts.net, login on`. From now on, every request needs a login, even from this computer. Leave it running.
+  </Step>
+
+  <Step title="Pair your phone">
+    In a second terminal:
+
+    ```bash
+    keel auth passkey add --name "My iPhone"
+    ```
+
+    It prints a QR code and waits. Scan the code with your phone's camera and open the link. The phone shows this page:
+
+    <div style={{ maxWidth: '300px' }}>
+      <Frame caption="The pairing page on the phone">
+        <img src="/images/login/screen-pair.png" alt="Pair this device: Creates a passkey named My iPhone for this Keel, with a Create passkey button" />
+      </Frame>
+    </div>
+
+    Tap **Create passkey** and approve with Face ID. The phone shows **Paired**, and so does your terminal. The link works once, for 10 minutes; if it runs out, run the command again.
+  </Step>
+
+  <Step title="Sign in">
+    Open your address on the phone. Tap **Sign in with passkey** and look at the phone. That's it: no username, no password.
+
+    <div style={{ maxWidth: '300px' }}>
+      <Frame caption="The sign-in page">
+        <img src="/images/login/screen-sign-in.png" alt="Sign in to the browser terminal, with a Sign in with passkey button and a Use a code instead link" />
+      </Frame>
+    </div>
+
+    A sign-in to the browser terminal lasts 12 hours. Add the page to your home screen (Safari: **Share → Add to Home Screen**) to open it like an app.
+  </Step>
+
+  <Step title="Optional: turn on codes as a fallback">
+    For a browser without passkeys, or when you open Keel at a local address, turn on six-digit codes from an authenticator app (1Password, Google Authenticator, Authy):
+
+    ```bash
+    keel auth totp enable
+    ```
+
+    Scan the QR code with the app, then type the code it shows. The sign-in page now offers **Use a code instead**. At an address where passkeys can't work, it shows the code box straight away:
+
+    <div style={{ maxWidth: '300px' }}>
+      <Frame caption="Signing in with a code at a local address">
+        <img src="/images/login/screen-code-lan.png" alt="A code box with a Sign in with code button, and a note saying passkeys work at the public address" />
+      </Frame>
+    </div>
+
+    On a Mac, macOS may ask to let Keel use the Keychain. That is where the code key is kept.
+  </Step>
+</Steps>
+
+## Every day
+
+Keep `keel serve --public-url ...` running on your computer. The Tailscale tunnel stays on until you turn it off. When the browser terminal session ends after 12 hours, the next command shows the sign-in screen; sign in again with one tap.
+
+```bash
+keel auth            # what is set up
+keel auth sessions   # who is signed in, and until when
+```
+
+## If you lose your phone
+
+From your computer:
+
+```bash
+keel auth passkey remove "My iPhone"   # the passkey stops working, and its sessions end
+keel auth sessions revoke --all        # also ends sign-ins made with a code
+```
+
+Then pair the new phone with `keel auth passkey add`. There are no recovery codes to keep safe: your own terminal is the way back in.
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="The page says passkeys work at another address">
+    <div style={{ maxWidth: '300px' }}>
+      <Frame>
+        <img src="/images/login/screen-wrong-address.png" alt="Passkeys for this Keel work at https://keel.example.ts.net, with a button to open that address" />
+      </Frame>
+    </div>
+
+    You opened Keel at `localhost` or an IP address. Passkeys only work at the `--public-url` address. Tap the button to go there, or sign in with a code.
+  </Accordion>
+
+  <Accordion title="keel auth passkey add says keel serve isn't running with a public address">
+    Start `keel serve --public-url https://...` first, in another terminal, on the same computer.
+  </Accordion>
+
+  <Accordion title="That code isn't right">
+    Check the code belongs to the **Keel** entry in the app, and that the phone's clock is set automatically. A code is accepted for 30 seconds either side of its time.
+  </Accordion>
+
+  <Accordion title="Too many tries">
+    After five wrong codes in a minute (or ten failed passkey attempts), Keel waits a minute before trying again.
+  </Accordion>
+
+  <Accordion title="That code was already used">
+    Each code works once. Wait for the next one in the app.
+  </Accordion>
+
+  <Accordion title="Your session ended">
+    The session ran out (12 hours for the browser terminal), or it was ended from the terminal. Sign in again.
+  </Accordion>
+
+  <Accordion title="My tunnel name changed">
+    Passkeys belong to the old name. Start `keel serve` with the new `--public-url`, remove the old passkey and pair the phone again. `keel serve` warns when your passkeys are for another name.
+  </Accordion>
+</AccordionGroup>
+
+## Turn it off
+
+Stop `keel serve` with Ctrl+C and close the tunnel:
+
+```bash
+tailscale funnel --https=443 off
+```
+
+Plain `keel serve` goes back to working on your own computer only, with no login. Your passkeys stay paired for next time.
+
+Want to know what happens behind each tap? Read [How login works](/guides/how-login-works).

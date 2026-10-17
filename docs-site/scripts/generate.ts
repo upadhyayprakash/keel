@@ -2,11 +2,13 @@
 //   reference/commands.mdx  from Keel's own command list (`help --json`) plus the examples below
 //   changelog.mdx           from CHANGELOG.md
 //   images, logo, favicon   copied from assets/brand
+//   images/login/*.svg      the login diagrams, drawn by diagrams.ts
 // Run from the repo root: pnpm docs:generate. CI fails if the committed output is stale.
 import { copyFileSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Keel } from '../../packages/core/src/index';
+import { writeDiagrams } from './diagrams';
 
 const site = join(dirname(fileURLToPath(import.meta.url)), '..');
 const repo = join(site, '..');
@@ -166,4 +168,5 @@ mkdirSync(join(site, 'reference'), { recursive: true });
 writeFileSync(join(site, 'reference', 'commands.mdx'), commandsPage(await commandList()));
 writeFileSync(join(site, 'changelog.mdx'), changelogPage());
 copyAssets();
-console.log('Generated reference/commands.mdx, changelog.mdx and assets.');
+writeDiagrams(site);
+console.log('Generated reference/commands.mdx, changelog.mdx, assets and diagrams.');
