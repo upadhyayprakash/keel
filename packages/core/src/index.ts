@@ -2,7 +2,8 @@ export { Keel, type KeelOptions, type KeelState, type Storage, type Completion, 
 export { contentCounts, exportJson, importDump, isEmpty, parseExport } from './commands/backup';
 export { isConnectionError } from './db/client';
 export { renderText, type Paint } from './render-text';
-export { KeelError } from './errors';
+export { Conflict, KeelError } from './errors';
+export * from './goals';
 export { VERSION } from './version';
 export { autoBackup, type AutoBackupOptions } from './auto-backup';
 export * from './blocks';

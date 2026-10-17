@@ -1,4 +1,5 @@
-import { sqliteTable, text, integer, uniqueIndex, index } from 'drizzle-orm/sqlite-core';
+import { sql } from 'drizzle-orm';
+import { sqliteTable, text, integer, uniqueIndex, index, check } from 'drizzle-orm/sqlite-core';
 
 // Turso-ready rules (docs/02-spec.md, section 6): ULID ids, UTC ISO timestamps,
 // updated_at on every row, soft deletes, short refs are display-only.
@@ -128,6 +129,53 @@ export const events = sqliteTable(
   },
   (t) => [index('events_entity').on(t.entityId, t.createdAt)],
 );
+
+/** Goals (ADR 0004): one small goal with a finish line, a deadline and an if-then plan. */
+export const goals = sqliteTable(
+  'goals',
+  {
+    ...base(),
+    refNo: integer('ref_no').notNull(),
+    title: text('title').notNull(),
+    /** What "done" looks like, in the owner's words. */
+    doneMeans: text('done_means').notNull(),
+    dueOn: text('due_on').notNull(),
+    /** The time budget, in the owner's words ("3 hours a week"). */
+    appetite: text('appetite'),
+    obstacle: text('obstacle'),
+    /** "If <obstacle>, then I will <action>." Required. */
+    plan: text('plan').notNull(),
+    status: text('status', { enum: ['active', 'done', 'dropped'] }).notNull().default('active'),
+    closedAt: text('closed_at'),
+  },
+  (t) => [uniqueIndex('goals_ref').on(t.refNo), index('goals_active').on(t.status, t.dueOn)],
+);
+
+export const goalSteps = sqliteTable(
+  'goal_steps',
+  {
+    ...base(),
+    goalId: text('goal_id').notNull(),
+    position: integer('position').notNull(),
+    text: text('text').notNull(),
+    /** When the step is planned, as a local date and time (`2026-10-19T07:00`). */
+    cueAt: text('cue_at'),
+    cuePlace: text('cue_place'),
+    /** The smaller version to offer after a missed cue ("10 minutes"). */
+    minimum: text('minimum'),
+    firstStep: integer('first_step', { mode: 'boolean' }).notNull().default(false),
+    status: text('status', { enum: ['open', 'done'] }).notNull().default('open'),
+    doneAt: text('done_at'),
+  },
+  (t) => [index('goal_steps_goal').on(t.goalId, t.position), index('goal_steps_cue').on(t.status, t.cueAt)],
+);
+
+/**
+ * ADR 0003 guarded writes: a guarded update is followed by `INSERT INTO write_guard
+ * VALUES (changes())`. When the update matched no row, the CHECK fails and the
+ * whole batch rolls back. Rows are deleted again at the end of each batch.
+ */
+export const writeGuard = sqliteTable('write_guard', { ok: integer('ok').notNull() }, (t) => [check('write_guard_ok', sql`${t.ok} = 1`)]);
 
 export const settings = sqliteTable('settings', {
   key: text('key').primaryKey(),

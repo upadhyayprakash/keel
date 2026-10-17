@@ -4,7 +4,7 @@ import type { Tone } from './blocks';
 import { ymd } from './dates';
 import { isConnectionError, isConstraintError, type Db } from './db/client';
 import * as t from './db/schema';
-import { KeelError } from './errors';
+import { Conflict, KeelError } from './errors';
 import type { Parsed } from './parse';
 
 export type Client = typeof t.clients.$inferSelect;
@@ -45,6 +45,12 @@ export interface Writer {
   sync(): Promise<void>;
 }
 
+/** The write_guard CHECK failed: a guarded update matched no row. */
+function isGuardFailure(e: unknown): boolean {
+  const text = `${e instanceof Error ? e.message : String(e)} ${(e as { cause?: unknown })?.cause ?? ''}`;
+  return /CHECK constraint failed/i.test(text) && /write_guard/i.test(text);
+}
+
 export class Store {
   constructor(
     public db: Db,
@@ -54,6 +60,9 @@ export class Store {
     private writer: Writer | null = null,
   ) {}
 
+  /** Guard statements made by guarded(), so batch() can clean up after them and report a conflict. */
+  private guards = new WeakSet<object>();
+
   newId = () => ulid();
   iso = () => this.now().toISOString();
   today = () => ymd(this.now());
@@ -62,14 +71,29 @@ export class Store {
     return { createdAt: at, updatedAt: at };
   }
 
+  /**
+   * ADR 0003: an update that must find the row as the command saw it. `update` carries
+   * the guard in its WHERE clause (`status = 'open'`); when it changes no rows, the
+   * statement after it fails a CHECK and batch() rolls everything back with a Conflict.
+   */
+  guarded(update: Query): Query[] {
+    const check = this.db.run(sql`insert into write_guard (ok) values (changes())`);
+    this.guards.add(check);
+    return [update, check];
+  }
+
   async batch(queries: Query[]): Promise<void> {
     if (queries.length === 0) return;
     if (this.offline) throw OFFLINE;
     const target = this.writer?.db ?? this.db;
-    const send = () => target.batch(queries as [Query, ...Query[]]);
+    const hasGuard = queries.some((q) => typeof q === 'object' && q !== null && this.guards.has(q));
+    // The guard rows only exist inside the batch.
+    const all = hasGuard ? [...queries, this.db.delete(t.writeGuard)] : queries;
+    const send = () => target.batch(all as [Query, ...Query[]]);
     try {
       await send();
     } catch (e) {
+      if (hasGuard && isGuardFailure(e)) throw new Conflict();
       if (!isConnectionError(e)) throw e;
       if (!this.writer) throw OFFLINE;
       // Hosted connections get dropped when idle; try once more. Safe: every row's id is
@@ -78,6 +102,7 @@ export class Store {
         await send();
       } catch (again) {
         if (isConnectionError(again)) throw OFFLINE;
+        // A failed id or guard constraint here means the first attempt landed.
         if (!isConstraintError(again)) throw again;
       }
     }
@@ -113,7 +138,7 @@ export class Store {
 
   // ---- refs and events ----
 
-  async nextRef(table: typeof t.commitments | typeof t.inboxItems | typeof t.projects): Promise<number> {
+  async nextRef(table: typeof t.commitments | typeof t.inboxItems | typeof t.projects | typeof t.goals): Promise<number> {
     const rows = await this.db
       .select({ m: sql<number>`coalesce(max(${table.refNo}), 0)` })
       .from(table as typeof t.commitments);

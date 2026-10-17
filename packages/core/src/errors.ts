@@ -8,3 +8,14 @@ export class KeelError extends Error {
     this.name = 'KeelError';
   }
 }
+
+/**
+ * A guarded write found the row changed since it was read (ADR 0003): another device
+ * got there first. Nothing in the batch was applied. Commands re-read and say what happened.
+ */
+export class Conflict extends KeelError {
+  constructor(message = 'This changed on another device first, so nothing was saved.', hint = 'Look again and retry if it still applies.') {
+    super(message, hint);
+    this.name = 'Conflict';
+  }
+}
