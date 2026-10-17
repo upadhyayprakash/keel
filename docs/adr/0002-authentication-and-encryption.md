@@ -1,9 +1,9 @@
 # 0002. Authentication and encryption: passkey login for the browser terminal and Goals, encryption at rest for local data
 
-- **Status:** Proposed
+- **Status:** Accepted (2026-10-18), after the try-out on a real phone over a tunnel
 - **Date:** 2026-10-12
 - **Revised:** 2026-10-16, before acceptance: passkeys first with TOTP as an optional fallback, pairing and recovery from the terminal, session rules. The first draft chose TOTP and listed passkeys as a later addition; Goals (ADR 0004, on `feat/goals`) needs a phone login that works from an installed app, so the order changed.
-- **Target release:** 0.4.0 (after multi-device, [ADR 0001](0001-multi-device-sync.md)). The login ships first, on its own branch (`feat/passkeys`), and Goals build on it.
+- **Target release:** 0.5.0 for the login (planned for 0.4.0, which shipped without it), after multi-device ([ADR 0001](0001-multi-device-sync.md)). The login ships first, on its own branch (`feat/passkeys`), and Goals build on it.
 
 ## Context
 
