@@ -4,6 +4,8 @@ All notable changes to Keel. The format follows [Keep a Changelog](https://keepa
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-10-17
+
 ### Added
 
 - A Claude Code plugin in `plugins/claude`, installable with `/plugin marketplace add upadhyayprakash/keel`: `/keel:capture` saves what you say (owe, wait, done, new dates, resume notes) through the keel CLI, and `/keel:today` answers what's on. It never deletes and always names the project.
@@ -72,7 +74,8 @@ The first release: one command language in your terminal and in the browser.
 - Shell completion for zsh and bash: `keel completion zsh|bash`.
 - Storage on libSQL: a local SQLite file by default, ready for a libSQL server or Turso later. CI runs the core tests on a file and on a libSQL server.
 
-[Unreleased]: https://github.com/upadhyayprakash/keel/compare/v0.3.1...HEAD
+[Unreleased]: https://github.com/upadhyayprakash/keel/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/upadhyayprakash/keel/compare/v0.3.1...v0.4.0
 [0.3.1]: https://github.com/upadhyayprakash/keel/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/upadhyayprakash/keel/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/upadhyayprakash/keel/compare/v0.1.0...v0.2.0
