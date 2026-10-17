@@ -27,6 +27,8 @@ Plain, short sentences. No em dashes: use a period, comma, colon or parentheses 
 
 ## Releasing (maintainers)
 
+New to this? The [development and release guide](docs/dev-and-release-guide.md) explains how CI, the tag-triggered release and the npm approval gate work, with step-by-step procedures, the 0.4.0 release as a worked example, and what to do when a step fails.
+
 1. Move the Unreleased notes in `CHANGELOG.md` under a new version heading and add its compare link.
 2. Bump `version` in `apps/cli/package.json` and `VERSION` in `packages/core/src/version.ts` (a test checks they match).
 3. Commit, then tag and push: `git tag v0.2.0 && git push origin main v0.2.0`.
