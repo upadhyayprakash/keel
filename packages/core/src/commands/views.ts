@@ -195,7 +195,7 @@ export const show: Command = {
         table(
           [
             [s('direction', 'muted'), s(c.direction === 'owe' ? `I owe ${v.personName}` : `waiting on ${v.personName}`)],
-            [s('due', 'muted'), s(`${formatDay(c.dueOn)} (${commitmentRow(v, day)[4]!.text})`)],
+            [s('due', 'muted'), s(dueWithLabel(c.dueOn, commitmentRow(v, day)[4]!.text, day))],
             [s('project', 'muted'), v.project ? s(v.project, v.hue ?? 'muted', { ref: `p${v.projectRef}` }) : s('-', 'dim')],
             [s('status', 'muted'), s(c.status)],
             [s('source', 'muted'), c.sourceRef ? s(`${c.source} · open link`, 'accent', { href: c.sourceRef }) : s(c.source)],
@@ -261,4 +261,10 @@ function historyBlocks(events: Array<{ createdAt: string; kind: string }>): Bloc
     heading('HISTORY', 'muted'),
     table(events.map((e) => [s(formatStamp(e.createdAt), 'muted'), s(e.kind)])),
   ];
+}
+
+/** "Thu 22 Oct (tomorrow)", without repeating the date when the label is the date itself. */
+function dueWithLabel(dueOn: string, label: string, today: string): string {
+  const date = formatDay(dueOn, today);
+  return label === date ? date : `${date} (${label})`;
 }

@@ -40,7 +40,9 @@ describe('describeDue', () => {
 
 describe('formatDay and weekStart', () => {
   it('formats short days and finds Monday', () => {
-    expect(formatDay('2026-10-15')).toBe('Thu 15 Oct');
+    expect(formatDay('2026-10-15', '2026-10-01')).toBe('Thu 15 Oct');
+    expect(formatDay('2027-10-16', '2026-10-17')).toBe('Sat 16 Oct 2027');
+    expect(formatDay('2025-12-31', '2026-01-02')).toBe('Wed 31 Dec 2025');
     expect(weekStart('2026-10-15')).toBe('2026-10-12');
     expect(weekStart('2026-10-18')).toBe('2026-10-12');
   });

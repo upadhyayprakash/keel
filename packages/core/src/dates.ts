@@ -61,9 +61,10 @@ export function parseDue(input: string, now: Date): string | null {
   return parsed ? ymd(parsed) : null;
 }
 
-/** "Thu 15 Oct" */
-export function formatDay(day: string): string {
-  return fromYmd(day).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
+/** "Thu 15 Oct", or "Sat 16 Oct 2027" when the year isn't the current one. */
+export function formatDay(day: string, today: string = ymd(new Date())): string {
+  const short = fromYmd(day).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
+  return day.slice(0, 4) === today.slice(0, 4) ? short : `${short} ${day.slice(0, 4)}`;
 }
 
 /** Short, relative label for a due date, with the tone that goes with it. */
@@ -72,8 +73,8 @@ export function describeDue(due: string, today: string): { text: string; tone: T
   if (diff < 0) return { text: `${-diff}d late`, tone: 'late' };
   if (diff === 0) return { text: 'today', tone: 'today' };
   if (diff === 1) return { text: 'tomorrow', tone: 'default' };
-  if (diff < 7) return { text: formatDay(due).split(' ')[0] ?? due, tone: 'default' };
-  return { text: formatDay(due), tone: 'muted' };
+  if (diff < 7) return { text: formatDay(due, today).split(' ')[0] ?? due, tone: 'default' };
+  return { text: formatDay(due, today), tone: 'muted' };
 }
 
 /** "Thu 15 Oct 14:05" in local time, for history lines. */
