@@ -9,6 +9,8 @@ import type { SecretStore } from './secrets';
 
 /** The secret store entry for the TOTP secret. `keel serve` reads it from there. */
 export const TOTP_ACCOUNT = 'auth-totp';
+/** What the Keychain or keyring shows for it. */
+export const TOTP_LABEL = 'Keel sign-in code key';
 
 interface Io {
   paint: Paint;
@@ -170,7 +172,11 @@ export async function totpEnable(store: AuthStore, io: Io, options: CommandOptio
       io.print([warn("That code isn't right. Check the app shows Keel, then try the next code.")]);
       continue;
     }
-    await secrets.set(TOTP_ACCOUNT, secret, 'Keel sign-in code key');
+    try {
+      await secrets.set(TOTP_ACCOUNT, secret, TOTP_LABEL);
+    } catch (e) {
+      throw new KeelError(`Couldn't save the key in ${secrets.label}, so codes are still off.`, e instanceof Error ? e.message : undefined);
+    }
     store.enableTotp(step);
     io.print([
       ok('Codes are on.'),

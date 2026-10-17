@@ -3,7 +3,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { AuthStore, renderText, totpCode, totpStep, type Block } from '@keel/core';
-import { authCommand, TOTP_ACCOUNT } from '../src/auth';
+import { authCommand, TOTP_ACCOUNT, TOTP_LABEL } from '../src/auth';
+import { safeLabel } from '../src/secrets';
 
 const URL = 'https://keel.example.ts.net';
 const credential = (n = 1) => ({ credentialId: `cred-${n}`, publicKey: `key-${n}`, counter: 0, transports: ['internal'] });
@@ -223,5 +224,31 @@ describe('keel auth totp', () => {
     out = [];
     await run();
     expect(text()).toMatch(/Codes\s+on/);
+  });
+});
+
+describe('keel auth totp, saving the key', () => {
+  it('uses a label the Keychain accepts', () => {
+    expect(safeLabel(TOTP_LABEL)).toBe(true);
+    expect(safeLabel('Keel database token')).toBe(true);
+    expect(safeLabel('a "quoted" label')).toBe(false);
+  });
+
+  it('says so, and leaves codes off, when the secret store refuses the key', async () => {
+    const secrets = {
+      label: 'the Keychain',
+      fallback: false,
+      get: async () => null,
+      set: async () => {
+        throw new Error('Could not save the token in the Keychain.');
+      },
+      delete: async () => {},
+    };
+    const key = () => /Or type this key: ([A-Z2-7 ]+)/.exec(text())![1]!.replace(/ /g, '');
+    const terminal = { ...io, ask: async () => totpCode(key(), 1_700_000_000_000) };
+    await expect(authCommand(store, ['totp', 'enable'], terminal, { secrets, account: 'my-mac', now: () => 1_700_000_000_000 })).rejects.toThrow(
+      "Couldn't save the key in the Keychain, so codes are still off.",
+    );
+    expect(store.totp()).toBeNull();
   });
 });

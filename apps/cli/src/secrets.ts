@@ -17,6 +17,8 @@ export interface SecretStore {
 const SERVICE = 'keel';
 // Tokens are JWTs or similar: refuse anything that could break out of the quoting below.
 const SAFE = /^[A-Za-z0-9._~+/=-]+$/;
+/** Keychain labels go inside the same quotes: words, spaces, dots and hyphens only. */
+export const safeLabel = (label: string) => /^[\w .-]+$/.test(label);
 
 function run(cmd: string, args: string[], input?: string): Promise<{ code: number; stdout: string }> {
   return new Promise((resolve) => {
@@ -48,7 +50,7 @@ const keychain: SecretStore = {
   async set(account, secret, label = 'Keel database token') {
     checkSafe(secret);
     checkSafe(account);
-    if (!/^[\w ]+$/.test(label)) throw new Error('Unexpected label.');
+    if (!safeLabel(label)) throw new Error(`Unexpected label "${label}".`);
     const r = await run('security', ['-i'], `add-generic-password -U -s ${SERVICE} -a "${account}" -l "${label}" -w "${secret}"\n`);
     if (r.code !== 0) throw new Error('Could not save the token in the Keychain.');
   },
