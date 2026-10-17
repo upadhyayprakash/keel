@@ -399,14 +399,15 @@ keel shell
 
 ### keel serve
 
-Open the same terminal in your browser, on this machine only.
+Open the same terminal in your browser. On this machine only, unless you add --public-url (behind an HTTPS tunnel) or --host; both need a passkey login.
 
 ```text Usage
-keel serve [--port 4242]
+keel serve [--port 4242] [--public-url https://<name>] [--host <address> --cert <file> --key <file>]
 ```
 
 ```bash Examples
 keel serve
+keel serve --public-url https://keel.example.ts.net
 ```
 
 ### keel db
@@ -421,6 +422,22 @@ keel db | keel db connect <address> | keel db disconnect
 keel db
 keel db connect libsql://keel-<you>.turso.io
 keel db disconnect
+```
+
+### keel auth
+
+Pair your phone with a passkey for keel serve --public-url, turn six-digit codes on as a fallback, and see or end sessions.
+
+```text Usage
+keel auth | keel auth passkey add|list|remove | keel auth totp enable [--label <name>]|disable | keel auth sessions [revoke <id>|--all]
+```
+
+```bash Examples
+keel auth
+keel auth passkey add --name "My iPhone"
+keel auth passkey remove "My iPhone"
+keel auth totp enable --label "Keel"
+keel auth sessions revoke --all
 ```
 
 ### keel completion

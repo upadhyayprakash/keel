@@ -7,6 +7,11 @@ All notable changes to Keel. The format follows [Keep a Changelog](https://keepa
 ### Added
 
 - Groundwork for Goals ([ADR 0004](docs/adr/0004-goals.md)), a goal mode for setting and finishing one small goal: `keel serve` serves an empty Goals phone app at `/goals`, installable from the browser. Two palette colours for tinted chips and partner cards (`accentTint`, `waitTint`).
+- Sign in to `keel serve` from your phone with a passkey (Face ID, a fingerprint or your screen lock). Start it behind an HTTPS tunnel with `keel serve --public-url https://<your-tunnel-name>`, then run `keel auth passkey add` and scan the QR code it prints. No username and no password. Login is then required on every request, and plain `keel serve` on your own machine works as before.
+- Six-digit codes from an authenticator app as a fallback: `keel auth totp enable` shows a QR code in the terminal and asks for one code to confirm. The sign-in page then offers "Use a code instead", and codes also work on a LAN address where passkeys can't.
+- `keel auth totp enable --label <name>` sets the name the authenticator app shows for Keel. Without it, the app shows this computer's name, as before; the name is part of the QR code, so `--label` keeps it out of screenshots.
+- `keel auth` shows what is set up; `keel auth passkey list` and `remove`, and `keel auth sessions` with `revoke <id>` or `--all`, manage it. All of this works only from your own terminal, never the browser.
+- `keel serve --host <address>` listens beyond this machine, and refuses to start without a login set up and HTTPS (`--cert` and `--key`, or `--public-url`).
 
 ## [0.4.0] - 2026-10-17
 

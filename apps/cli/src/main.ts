@@ -1,11 +1,13 @@
-import { mkdirSync } from 'node:fs';
+import { mkdirSync, readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { createInterface } from 'node:readline/promises';
-import { autoBackup, fail, hint, Keel, KeelError, renderText, VERSION, type AutoBackupOptions } from '@keel/core';
+import { AuthStore, autoBackup, fail, hint, Keel, KeelError, parsePublicUrl, renderText, VERSION, warn, type AutoBackupOptions } from '@keel/core';
+import { authCommand, TOTP_ACCOUNT } from './auth';
 import { dbConnect, dbDisconnect, dbStatus, storageOptions, terminalIo } from './db';
 import { completionScript, formatSuggestions, isShell } from './completion';
 import { runCommand } from './run';
+import { secretStore } from './secrets';
 import { questionAsker, runShell } from './shell';
 import { ansiPaint, argvToLine, banner, needsProbe, probeBackground, resolveTheme, useColor } from './terminal';
 
@@ -69,6 +71,33 @@ async function main(): Promise<number> {
     }
   }
 
+  // keel auth: pair phones with passkeys and manage sessions, from this terminal only (ADR 0002).
+  if (args[0] === 'auth') {
+    const color = useColor(process.env, Boolean(process.stdout.isTTY));
+    const paint = color ? ansiPaint(resolveTheme(process.env, null)) : (text: string) => text;
+    const io = {
+      ...terminalIo(paint, color),
+      write: (text: string) => process.stdout.write(text + '\n'),
+      async ask(prompt: string) {
+        if (!process.stdin.isTTY) return '';
+        const rl = createInterface({ input: process.stdin, output: process.stdout });
+        try {
+          return await rl.question(`${paint('│', { tone: 'muted' })} ${paint(prompt, { tone: 'accent', bold: true })} `);
+        } finally {
+          rl.close();
+        }
+      },
+    };
+    const cancelled = new Promise<void>((resolve) => process.once('SIGINT', () => resolve()));
+    try {
+      return await authCommand(AuthStore.at(HOME), args.slice(1), io, { cancelled, secrets: await secretStore(HOME) });
+    } catch (e) {
+      if (!(e instanceof KeelError)) throw e;
+      io.print([fail(e.message), ...(e.hint ? [hint(e.hint)] : [])]);
+      return 1;
+    }
+  }
+
   const storage = await storageOptions(HOME);
   const url = storage.url;
   if (url.startsWith('file:')) mkdirSync(dirname(url.slice('file:'.length)), { recursive: true });
@@ -88,10 +117,34 @@ async function main(): Promise<number> {
       await backup(keel, url);
       setInterval(() => void backup(keel, url), 60 * 60 * 1000); // a long-running server still rolls over at midnight
       setInterval(() => void keel.sync(), 30 * 1000); // pick up changes from other devices
-      const { startServer } = await import('@keel/server');
-      const portArg = args.indexOf('--port');
-      const port = Number(portArg >= 0 ? args[portArg + 1] : process.env.KEEL_PORT || 4242);
-      await startServer({ keel, port });
+      const { checkServe, startServer } = await import('@keel/server');
+      const flag = (name: string) => {
+        const i = args.indexOf(name);
+        if (i < 0) return undefined;
+        const value = args[i + 1];
+        if (!value || value.startsWith('--')) throw new KeelError(`${name} needs a value.`);
+        return value;
+      };
+      const port = Number(flag('--port') ?? (process.env.KEEL_PORT || 4242));
+      const host = flag('--host') ?? '127.0.0.1';
+      const publicUrl = flag('--public-url');
+      const [certFile, keyFile] = [flag('--cert'), flag('--key')];
+      const store = AuthStore.at(HOME);
+      const { login } = checkServe({ host, publicUrl, cert: certFile, key: keyFile }, store);
+      const tls = certFile && keyFile ? { cert: readFileSync(certFile, 'utf8'), key: readFileSync(keyFile, 'utf8') } : undefined;
+
+      if (publicUrl) {
+        const { rpId } = parsePublicUrl(publicUrl);
+        const others = [...new Set(store.passkeys().map((p) => p.rpId))].filter((h) => h !== rpId);
+        if (others.length) process.stderr.write(renderText([warn(`Your passkeys are for ${others.join(', ')}, not ${rpId}. Pair your phone again: keel auth passkey add`)]) + '\n');
+        // So `keel auth passkey add` can find this server; removed on exit.
+        store.writeServerInfo({ publicUrl: new URL(publicUrl).origin, port, pid: process.pid });
+        process.on('exit', () => store.clearServerInfo(process.pid));
+        for (const signal of ['SIGINT', 'SIGTERM'] as const) process.once(signal, () => process.exit(0));
+      }
+      const secrets = await secretStore(HOME);
+      const totpSecret = () => secrets.get(TOTP_ACCOUNT);
+      await startServer({ keel, port, host, tls, auth: login ? { store, publicUrl, totpSecret } : undefined });
       return new Promise<number>(() => {}); // runs until Ctrl+C
     }
 
