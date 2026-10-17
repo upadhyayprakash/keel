@@ -62,7 +62,7 @@ export function parseDue(input: string, now: Date): string | null {
 }
 
 /** "Thu 15 Oct", or "Sat 16 Oct 2027" when the year isn't the current one. */
-export function formatDay(day: string, today: string = ymd(new Date())): string {
+export function formatDay(day: string, today: string): string {
   const short = fromYmd(day).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
   return day.slice(0, 4) === today.slice(0, 4) ? short : `${short} ${day.slice(0, 4)}`;
 }
@@ -78,9 +78,9 @@ export function describeDue(due: string, today: string): { text: string; tone: T
 }
 
 /** "Thu 15 Oct 14:05" in local time, for history lines. */
-export function formatStamp(iso: string): string {
+export function formatStamp(iso: string, today: string): string {
   const d = new Date(iso);
-  return `${formatDay(ymd(d))} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  return `${formatDay(ymd(d), today)} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
 /** ISO 8601 week number (weeks start on Monday). */
@@ -95,8 +95,8 @@ export function isoWeek(day: string): number {
 
 /** "12 to 18 Oct", or "28 Sep to 4 Oct" across months. */
 export function formatRange(from: string, to: string): string {
-  const [, fromDay, fromMonth] = formatDay(from).split(' ');
-  const [, toDay, toMonth] = formatDay(to).split(' ');
+  const [, fromDay, fromMonth] = formatDay(from, from).split(' ');
+  const [, toDay, toMonth] = formatDay(to, to).split(' ');
   return fromMonth === toMonth ? `${fromDay} to ${toDay} ${toMonth}` : `${fromDay} ${fromMonth} to ${toDay} ${toMonth}`;
 }
 

@@ -62,7 +62,8 @@ describe('suggestions follow each command', () => {
 
   it('guides owe and wait: who, then when, then where from', async () => {
     expect(await inserts('owe ')).toEqual([]);
-    expect(await inserts('owe send deck ')).toEqual(['@meera', '@ravi']);
+    expect(await inserts('owe send deck ')).toEqual(['@me', '@meera', '@ravi']);
+    expect(await inserts('wait send deck ')).toEqual(['@meera', '@ravi']);
     expect((await inserts('owe send deck @ravi '))[0]).toBe('due:today');
     expect(await inserts('owe send deck @ravi due:fri ')).toEqual(['from:', '+acme/website', '+northwind/portal']);
     expect(await inserts('owe send deck @ravi du')).toEqual(['due:']);
@@ -75,7 +76,8 @@ describe('suggestions follow each command', () => {
     expect(await inserts('ls #')).toEqual(['#legal']);
     expect(await inserts('ls ')).toEqual(['owe', 'wait', 'overdue', 'done', 'inbox']);
     expect(await inserts('switch ')).toEqual(['northwind/portal']);
-    expect(await inserts('person merge @rav ')).toEqual(['@meera', '@ravi']);
+    expect(await inserts('person merge @rav ')).toEqual(['@me', '@meera', '@ravi']);
+    expect(await inserts('person rename ')).toEqual(['@meera', '@ravi']);
     expect(await inserts('park ')).toEqual(['where:', 'next:', 'unsure:']);
     expect(await inserts('park where:"x" ')).toEqual(['next:', 'unsure:']);
   });

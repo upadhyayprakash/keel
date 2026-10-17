@@ -117,4 +117,26 @@ describe('people', () => {
     expect(await run('people')).not.toContain('@rav ');
     expect(await run('person merge @nobody @ravi')).toContain('No person @nobody');
   });
+
+  it('treats @me as you: for myself, never waited on, not a contact', async () => {
+    expect(await run('owe renew passport @me due:2027-03-01 +acme/website')).toContain('for myself · Mon 1 Mar 2027');
+    const created = await run('owe book dentist @me due:fri');
+    expect(created).toContain('for myself');
+    expect(created).not.toContain('I owe');
+    const ref = created.match(/c\d+/)![0];
+    const shown = await run(`show ${ref}`);
+    expect(shown).toContain('for myself');
+    expect(shown).not.toContain('I owe Me');
+
+    expect(await run('wait reply @me due:fri')).toContain("You can't wait on yourself.");
+    expect(await run('set c2 @me')).toContain("You can't wait on yourself.");
+    expect(await run('people')).not.toMatch(/@me\s/);
+    expect(await run('person rename @me "Someone"')).toContain('@me is always you.');
+    expect(await run('person merge @me @ravi')).toContain("can't be merged");
+    expect(await run('person merge @meera @me')).toContain("you can't wait on yourself");
+
+    await run('owe file taxes @prakash due:fri');
+    expect(await run('person merge @prakash @me')).toContain('@prakash merged into @me · 1 commitment moved');
+    expect(await run('ls @me')).toContain('file taxes');
+  });
 });

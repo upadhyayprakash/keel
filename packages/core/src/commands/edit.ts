@@ -4,6 +4,7 @@ import { formatDay, parseDue } from '../dates';
 import * as t from '../db/schema';
 import { KeelError } from '../errors';
 import { parseRef } from '../parse';
+import { SELF, isSelf } from '../self';
 import type { Store } from '../store';
 import { commitmentData, inboxData, projectData, projectSpan, refArg, type Command } from './shared';
 import { today as todayCommand } from './views';
@@ -68,7 +69,7 @@ export const renegotiate: Command = {
       k.event('commitment', v.c.id, 'renegotiated', { from: v.c.dueOn, to: dueOn }),
     ]);
     return [
-      ok([s(`c${v.c.refNo}`, 'default', { bold: true }), s(` renegotiated to ${formatDay(dueOn)}`)]),
+      ok([s(`c${v.c.refNo}`, 'default', { bold: true }), s(` renegotiated to ${formatDay(dueOn, k.today())}`)]),
       data(commitmentData(await k.commitmentByRef(ref.n))),
     ];
   },
@@ -128,7 +129,7 @@ export const set: Command = {
         k.db.update(t.projects).set({ ...changes, updatedAt: at }).where(eq(t.projects.id, pv.project.id)),
         k.event('project', pv.project.id, 'updated', changes),
       ]);
-      const out: Block[] = [ok([projectSpan(pv), s(` updated: ${describe(changes)}`)])];
+      const out: Block[] = [ok([projectSpan(pv), s(` updated: ${describe(changes, k.today())}`)])];
       if (changes.status === 'paused') out.push(hint('Paused projects drop out of today but stay in the weekly review.'));
       out.push(data(projectData((await k.projectByRef(ref.n))!)));
       return out;
@@ -151,6 +152,7 @@ export const set: Command = {
       changes.closedAt = changes.status === 'open' ? null : at;
     }
     if (p.people[0]) {
+      if (v.c.direction === 'wait' && isSelf(p.people[0])) throw new KeelError("You can't wait on yourself.", `@${SELF} is for things you owe yourself.`);
       const person = await k.person(p.people[0]);
       queries.push(...person.queries);
       changes.personId = person.id;
@@ -163,17 +165,17 @@ export const set: Command = {
       k.db.update(t.commitments).set({ ...changes, updatedAt: at }).where(eq(t.commitments.id, v.c.id)),
       k.event('commitment', v.c.id, changes.dueOn ? 'moved' : 'updated', changes),
     ]);
-    const out: Block[] = [ok([s(`c${v.c.refNo}`, 'default', { bold: true, ref: `c${v.c.refNo}` }), s(` updated: ${describe(changes)}`)])];
+    const out: Block[] = [ok([s(`c${v.c.refNo}`, 'default', { bold: true, ref: `c${v.c.refNo}` }), s(` updated: ${describe(changes, k.today())}`)])];
     if (changes.dueOn) out.push(hint(`Logged as a silent move. If you agreed the new date, use: renegotiate c${v.c.refNo} due:${p.kv.due}`));
     out.push(data(commitmentData(await k.commitmentByRef(ref.n))));
     return out;
   },
 };
 
-function describe(changes: Record<string, unknown>): string {
+function describe(changes: Record<string, unknown>, today: string): string {
   return Object.entries(changes)
     .filter(([key]) => key !== 'closedAt')
-    .map(([key, value]) => `${key.replace(/Id$/, '')} ${key === 'dueOn' ? formatDay(String(value)) : key.endsWith('Id') ? 'changed' : String(value)}`)
+    .map(([key, value]) => `${key.replace(/Id$/, '')} ${key === 'dueOn' ? formatDay(String(value), today) : key.endsWith('Id') ? 'changed' : String(value)}`)
     .join(', ');
 }
 

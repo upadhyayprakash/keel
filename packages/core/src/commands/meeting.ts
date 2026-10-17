@@ -1,5 +1,6 @@
 import { blank, data, hint, line, ok, s, warn, type Block } from '../blocks';
 import { formatDay } from '../dates';
+import { whoName } from '../self';
 import * as t from '../db/schema';
 import { KeelError } from '../errors';
 import { classify, tokenize } from '../parse';
@@ -48,7 +49,7 @@ export const meeting: Command = {
           line(
             [
               s(direction === 'owe' ? 'owe   ' : 'wait  ', direction === 'owe' ? 'accent' : 'wait'),
-              s(`${input.title} ${direction === 'owe' ? '→' : '←'} ${name} · ${formatDay(input.dueOn)}`),
+              s(`${input.title} ${direction === 'owe' ? '→' : '←'} ${whoName(input.handle, name)} · ${formatDay(input.dueOn, k.today())}`),
             ],
             2,
           ),

@@ -16,7 +16,7 @@ interface Period {
 }
 
 function periodFor(kind: PeriodKind, today: string): Period {
-  if (kind === 'day') return { from: today, to: today, label: formatDay(today) };
+  if (kind === 'day') return { from: today, to: today, label: formatDay(today, today) };
   const from = kind === 'week' ? weekStart(today) : addDays(weekStart(today), -7);
   const to = addDays(from, 6);
   return { from, to, label: `Week ${isoWeek(from)} · ${formatRange(from, to)}` };

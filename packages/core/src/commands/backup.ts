@@ -4,6 +4,7 @@ import { resolve } from 'node:path';
 import { sql } from 'drizzle-orm';
 import { data, ok, s } from '../blocks';
 import { weekStart } from '../dates';
+import { whoName } from '../self';
 import * as t from '../db/schema';
 import { KeelError } from '../errors';
 import type { CommitmentView, Store } from '../store';
@@ -234,7 +235,7 @@ async function markdown(k: Store): Promise<string> {
 function commitmentLine(v: CommitmentView): string {
   const c = v.c;
   const title = c.status === 'dropped' ? `~~${c.title}~~` : c.title;
-  const who = c.direction === 'owe' ? `→ ${v.personName}` : `← ${v.personName}`;
+  const who = c.direction === 'owe' ? `→ ${whoName(v.person, v.personName)}` : `← ${v.personName}`;
   const bits = [c.status === 'open' ? `due ${c.dueOn}` : `${c.status} ${c.closedAt?.slice(0, 10) ?? ''}`.trim()];
   if (c.renegotiatedCount) bits.push(`renegotiated ${c.renegotiatedCount}x`);
   if (c.source !== 'other') bits.push(c.sourceRef ? `from [${c.source}](${c.sourceRef})` : `from ${c.source}`);

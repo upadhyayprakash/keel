@@ -52,7 +52,7 @@ They give you the client and project slugs, the people's handles, the project th
 
 The full grammar is in `keel-run.sh help`. The rules that matter:
 
-- **Every `owe` and `wait` needs `@who` and `due:`.** Keel refuses one without them. For a deadline the user owes themselves, use their own handle (the person matching their name in `people`, otherwise `@me`). For a deadline owed to an organisation (a tax office, a patent office, a client), make a short handle for it (`@taxoffice`) and give it a readable name with `person rename` the first time.
+- **Every `owe` and `wait` needs `@who` and `due:`.** Keel refuses one without them. For something the user owes themselves, use `@me` (Keel shows it as "for myself"; never `wait` on `@me`). Don't file it under a person with the user's own name; if `people` has one, suggest `person merge @<their-handle> @me`. For a deadline owed to an organisation (a tax office, a patent office, a client), make a short handle for it (`@taxoffice`) and give it a readable name with `person rename` the first time.
 - **Always pass `+client/project`.** Without it, the item lands in whatever project the user is working on, which may not be the one they meant. Use the slugs from step 1. If none fits, propose a new project and ask before creating it.
 - **Dates:** `due:2026-10-20` for an exact date (prefer this when the user gives one), or `due:today`, `due:tomorrow`, `due:fri`, `due:eow`, `due:+3d`, `due:+2w`, or a quoted phrase such as `due:"next friday"`. Work out relative dates from today's date in `today`.
 - **Source:** add `from:claude` to commitments you create, unless the user names another (`from:meeting`, `from:email`, `from:slack:<link>`).

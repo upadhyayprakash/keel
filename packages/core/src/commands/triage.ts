@@ -62,7 +62,7 @@ export async function* triageFlow(k: Store): Flow {
             k.db.update(t.inboxItems).set({ triagedAt: at, updatedAt: at }).where(eq(t.inboxItems.id, item.id)),
             k.event('inbox', item.id, 'triaged', { into: created.ref }),
           ]);
-          blocks.push(ok(createdLine(created.ref, direction, created.personName, input)));
+          blocks.push(ok(createdLine(created.ref, direction, created.personName, input, k.today())));
           tally.commitments++;
           continue items;
         } catch (e) {

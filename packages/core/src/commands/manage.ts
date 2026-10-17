@@ -3,6 +3,7 @@ import { data, heading, hint, ok, s, table, warn, type Block } from '../blocks';
 import { weekStart } from '../dates';
 import * as t from '../db/schema';
 import { KeelError } from '../errors';
+import { SELF, isSelf } from '../self';
 import { CLIENT_HUES } from '../palettes';
 import type { Parsed } from '../parse';
 import type { ProjectView, Store } from '../store';
@@ -324,6 +325,7 @@ export const person: Command = {
       const handle = p.people[0];
       const name = p.words.slice(1).join(' ').trim();
       if (!handle || !name) throw new KeelError('Who, and what name?', 'Example: person rename @ravi "Ravi Kumar"');
+      if (isSelf(handle)) throw new KeelError(`@${SELF} is always you.`, 'It shows as "for myself" and has no name to set.');
       const who = await k.personByHandle(handle);
       await k.batch([
         k.db.update(t.people).set({ name, updatedAt: k.iso() }).where(eq(t.people.id, who.id)),
@@ -335,14 +337,25 @@ export const person: Command = {
       const [fromHandle, intoHandle] = p.people;
       if (!fromHandle || !intoHandle) throw new KeelError('Merge whom into whom?', 'Example: person merge @rav @ravi (moves everything from @rav to @ravi)');
       if (fromHandle === intoHandle) throw new KeelError('That is the same person.');
+      if (isSelf(fromHandle)) throw new KeelError(`@${SELF} is always you and can't be merged into someone else.`);
       const from = await k.personByHandle(fromHandle);
-      const into = await k.personByHandle(intoHandle);
+      // @me may not exist yet: create it on the way in.
+      const self = isSelf(intoHandle) ? await k.person(SELF) : null;
+      const into = self ? { id: self.id, handle: SELF } : await k.personByHandle(intoHandle);
+      if (self) {
+        const waits = await k.db
+          .select({ id: t.commitments.id })
+          .from(t.commitments)
+          .where(and(eq(t.commitments.personId, from.id), eq(t.commitments.direction, 'wait'), eq(t.commitments.status, 'open'), isNull(t.commitments.deletedAt)));
+        if (waits.length) throw new KeelError(`@${from.handle} has things you're waiting on, and you can't wait on yourself.`, 'Move or close those first, then merge.');
+      }
       const moved = await k.db
         .select({ id: t.commitments.id })
         .from(t.commitments)
         .where(and(eq(t.commitments.personId, from.id), isNull(t.commitments.deletedAt)));
       const at = k.iso();
       await k.batch([
+        ...(self?.queries ?? []),
         k.db.update(t.commitments).set({ personId: into.id, updatedAt: at }).where(eq(t.commitments.personId, from.id)),
         k.db.update(t.people).set({ deletedAt: at, updatedAt: at, handle: freed(from.handle, from.id) }).where(eq(t.people.id, from.id)),
         k.event('person', from.id, 'merged', { into: into.handle, commitments: moved.length }),
@@ -357,7 +370,7 @@ export const person: Command = {
 };
 
 async function listPeople(k: Store): Promise<Block[]> {
-  const people = await k.listPeople();
+  const people = (await k.listPeople()).filter((x) => !isSelf(x.handle));
   if (people.length === 0) return [hint('No people yet. They appear when you use @name in owe or wait.'), data({ people: [] })];
   const open = await k.db
     .select({ personId: t.commitments.personId, direction: t.commitments.direction })

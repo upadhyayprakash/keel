@@ -89,7 +89,7 @@ export const switchCommand: Command = {
     out.push(
       line([s('◆ ', 'accent'), s('Now in '), projectSpan(target), s(ago === null ? '' : ago === 0 ? ' · last here today' : ` · last here ${ago} days ago`, 'muted')]),
       blank(),
-      noteBlock(note, 'Resume note'),
+      noteBlock(note, 'Resume note', k.today()),
     );
 
     const open = await k.commitmentViews([eq(t.commitments.status, 'open'), eq(t.commitments.projectId, target.project.id)]);

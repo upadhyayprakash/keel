@@ -1,6 +1,7 @@
 import { eq } from 'drizzle-orm';
 import { blank, data, heading, hint, line, s, table, type Block, type Span, type Tone } from '../blocks';
 import { addDays, dayDiff, formatDay, formatStamp, weekStart, ymd } from '../dates';
+import { whoPhrase } from '../self';
 import * as t from '../db/schema';
 import { KeelError } from '../errors';
 import { parseRef } from '../parse';
@@ -26,7 +27,7 @@ export const today: Command = {
 
     const out: Block[] = [
       line([
-        s(formatDay(day), 'muted'),
+        s(formatDay(day, day), 'muted'),
         ...(ctx ? [s(' · working on ', 'muted'), projectSpan(ctx)] : [s(' · not in a project', 'dim')]),
         ...(scope ? [s(` · showing +${scope}`, 'muted')] : []),
       ]),
@@ -194,13 +195,13 @@ export const show: Command = {
         line([s(`c${c.refNo}  `, 'muted'), s(c.title, 'default', { bold: true })]),
         table(
           [
-            [s('direction', 'muted'), s(c.direction === 'owe' ? `I owe ${v.personName}` : `waiting on ${v.personName}`)],
+            [s('direction', 'muted'), s(whoPhrase(c.direction, v.person, v.personName))],
             [s('due', 'muted'), s(dueWithLabel(c.dueOn, commitmentRow(v, day)[4]!.text, day))],
             [s('project', 'muted'), v.project ? s(v.project, v.hue ?? 'muted', { ref: `p${v.projectRef}` }) : s('-', 'dim')],
             [s('status', 'muted'), s(c.status)],
             [s('source', 'muted'), c.sourceRef ? s(`${c.source} · open link`, 'accent', { href: c.sourceRef }) : s(c.source)],
             ...(c.renegotiatedCount ? [[s('renegotiated', 'muted'), s(`${c.renegotiatedCount}x`)]] : []),
-            ...(c.lastNudgedAt ? [[s('last nudged', 'muted'), s(formatDay(c.lastNudgedAt.slice(0, 10)))]] : []),
+            ...(c.lastNudgedAt ? [[s('last nudged', 'muted'), s(formatDay(c.lastNudgedAt.slice(0, 10), day))]] : []),
             ...(c.tags ? [[s('tags', 'muted'), s(c.tags.split(' ').map((x) => `#${x}`).join(' '))]] : []),
           ],
           2,
@@ -209,7 +210,7 @@ export const show: Command = {
       const events = await k.eventsFor(c.id);
       return [
         ...out,
-        ...historyBlocks(events),
+        ...historyBlocks(events, day),
         data({ ...commitmentData(v), history: events.map((e) => ({ at: e.createdAt, kind: e.kind, payload: e.payloadJson ? JSON.parse(e.payloadJson) : null })) }),
       ];
     }
@@ -223,7 +224,7 @@ export const show: Command = {
       return [
         line([s(`p${pv.project.refNo}  `, 'muted'), projectSpan(pv), s(`  ${pv.project.name} · ${pv.project.status}`, 'muted')]),
         blank(),
-        noteBlock(note, 'Resume note'),
+        noteBlock(note, 'Resume note', day),
         blank(),
         heading(`OPEN · ${open.length}`),
         ...(open.length ? [table(open)] : [hint('No open commitments.')]),
@@ -235,17 +236,17 @@ export const show: Command = {
     const project = item.projectId ? await k.projectById(item.projectId) : null;
     return [
       line([s(`i${item.refNo}  `, 'muted'), s(item.text, 'default', { bold: true })]),
-      hint(`captured ${formatDay(item.createdAt.slice(0, 10))}${item.triagedAt ? ' · sorted' : ''}`),
+      hint(`captured ${formatDay(item.createdAt.slice(0, 10), k.today())}${item.triagedAt ? ' · sorted' : ''}`),
       data(inboxData(item, project?.path ?? null)),
     ];
   },
 };
 
-export function noteBlock(note: { whereIAm: string | null; nextStep: string | null; unsureAbout: string | null; createdAt: string } | null, title: string): Block {
+export function noteBlock(note: { whereIAm: string | null; nextStep: string | null; unsureAbout: string | null; createdAt: string } | null, title: string, today: string): Block {
   if (!note) return hint('No resume note yet. Write one with: park where:"..." next:"..." unsure:"..."');
   return {
     kind: 'note',
-    title: [s(title, 'default', { bold: true }), s(` · ${formatDay(note.createdAt.slice(0, 10))}`, 'muted')],
+    title: [s(title, 'default', { bold: true }), s(` · ${formatDay(note.createdAt.slice(0, 10), today)}`, 'muted')],
     fields: [
       { label: 'Where', value: note.whereIAm ?? '-' },
       { label: 'Next', value: note.nextStep ?? '-' },
@@ -254,12 +255,12 @@ export function noteBlock(note: { whereIAm: string | null; nextStep: string | nu
   };
 }
 
-function historyBlocks(events: Array<{ createdAt: string; kind: string }>): Block[] {
+function historyBlocks(events: Array<{ createdAt: string; kind: string }>, today: string): Block[] {
   if (events.length === 0) return [];
   return [
     blank(),
     heading('HISTORY', 'muted'),
-    table(events.map((e) => [s(formatStamp(e.createdAt), 'muted'), s(e.kind)])),
+    table(events.map((e) => [s(formatStamp(e.createdAt, today), 'muted'), s(e.kind)])),
   ];
 }
 

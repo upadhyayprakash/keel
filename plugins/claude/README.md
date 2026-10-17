@@ -37,6 +37,7 @@ Claude also uses them without the slash command when you say things like "remind
 
 - Every call goes through `scripts/keel-run.sh`, which finds `keel` (on your PATH, or in nvm) and adds `--json`. The JSON fields are Keel's [public contract](https://nouisi-keel.mintlify.site/reference/json).
 - It works on whatever database `keel` uses: the local file, or the synced copy from `keel db connect`. Set `KEEL_HOME` or `KEEL_DB_URL` to point it elsewhere.
+- Promises to yourself go to `@me` ("for myself"; needs Keel 0.3.2 or newer to show that way).
 - Commitments it creates are marked `from:claude`, so you can tell them apart in `show`.
 - It always names the project (`+client/project`), so nothing lands in the wrong one.
 - It never deletes, never switches your project unless you ask, and asks before creating clients or projects, before large batches, and when a person, date or project is unclear.

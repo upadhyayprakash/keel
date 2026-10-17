@@ -132,7 +132,7 @@ export const review: Command = {
     if (clients.length === 0) pending.push(hint('No clients with active projects.'));
     for (const c of clients) {
       const answer = (yield ask({
-        prompt: `Top priority for ${c.name}, week of ${formatDay(week)}?`,
+        prompt: `Top priority for ${c.name}, week of ${formatDay(week, day)}?`,
         hint: priorities[c.slug] ? `enter keeps: ${priorities[c.slug]}` : 'enter skips',
       })).trim();
       if (answer) priorities[c.slug] = answer;

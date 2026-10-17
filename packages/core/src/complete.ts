@@ -3,6 +3,7 @@ import { commands, expand, findCommand } from './commands/index';
 import { SOURCES } from './commands/shared';
 import { formatDay, parseDue } from './dates';
 import * as t from './db/schema';
+import { SELF } from './self';
 import type { Store } from './store';
 
 export interface Suggestion {
@@ -72,7 +73,11 @@ export async function suggest(k: Store, input: string): Promise<Omit<Completion,
   const pos = args.length;
 
   // Lazy lookups, so a keystroke only reads what it needs.
-  const people = async () => (await k.listPeople()).map((p): Choice => [`@${p.handle}`, p.name]);
+  // @me (yourself) is offered where it makes sense: not for wait, rename, or as the person merged away.
+  const people = async (self: boolean) => [
+    ...(self ? [[`@${SELF}`, 'yourself'] as Choice] : []),
+    ...(await k.listPeople()).filter((p) => p.handle !== SELF).map((p): Choice => [`@${p.handle}`, p.name]),
+  ];
   const projects = async (prefix = '') => (await k.listProjects()).map((pv): Choice => [`${prefix}${pv.path}`, pv.project.name]);
   const openRefs = async (direction?: 'owe' | 'wait') =>
     (await k.commitmentViews([eq(t.commitments.status, 'open')]))
@@ -85,7 +90,7 @@ export async function suggest(k: Store, input: string): Promise<Omit<Completion,
 
   // Tokens that mean the same thing in every command.
   if (current.startsWith('@')) {
-    add(await people());
+    add(await people(cmd !== 'wait' && cmd !== 'person'));
     return done();
   }
   if (current.startsWith('+')) {
@@ -104,7 +109,7 @@ export async function suggest(k: Store, input: string): Promise<Omit<Completion,
     if (key === 'due') {
       for (const preset of DUE_PRESETS) {
         const day = parseDue(preset, k.now());
-        offer(`due:${preset}`, day ? formatDay(day) : undefined);
+        offer(`due:${preset}`, day ? formatDay(day, k.today()) : undefined);
       }
     } else if (key === 'from') {
       for (const src of SOURCES) offer(`from:${src}`, src === 'slack' ? 'add :<link to the message>' : undefined, src === 'slack');
@@ -139,7 +144,7 @@ export async function suggest(k: Store, input: string): Promise<Omit<Completion,
       if (pos === 1 && sub === 'delete') add([...(await projects()), ...(await projectRefs())]);
       break;
     case 'person':
-      if (pos >= 1 && (sub === 'rename' ? pos === 1 : sub === 'merge' ? pos <= 2 : false)) add(await people());
+      if (pos >= 1 && (sub === 'rename' ? pos === 1 : sub === 'merge' ? pos <= 2 : false)) add(await people(sub === 'merge' && pos === 2));
       break;
     case 'switch': {
       const ctx = await k.contextProject();
@@ -184,11 +189,11 @@ export async function suggest(k: Store, input: string): Promise<Omit<Completion,
         keys(['due', 'from']);
         break;
       }
-      if (!args.some((a) => a.startsWith('@'))) add(await people());
+      if (!args.some((a) => a.startsWith('@'))) add(await people(cmd === 'owe'));
       else if (!args.some((a) => a.startsWith('due:'))) {
         for (const preset of DUE_PRESETS.slice(0, 7)) {
           const day = parseDue(preset, k.now());
-          offer(`due:${preset}`, day ? formatDay(day) : undefined);
+          offer(`due:${preset}`, day ? formatDay(day, k.today()) : undefined);
         }
       } else {
         keys(['from']);

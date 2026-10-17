@@ -4,6 +4,7 @@ import { fail, hint, s, warn, type Block, type RunResult, type Span, type Tone }
 import { readCommitment } from './commands/capture';
 import { expand, findCommand, type Command, type Flow } from './commands/index';
 import { formatDay } from './dates';
+import { whoName } from './self';
 import { existsSync } from 'node:fs';
 import { isConnectionError, migrateDb, openDb, upToDate } from './db/client';
 import * as t from './db/schema';
@@ -256,9 +257,9 @@ export class Keel {
       return [
         s('will create  ', 'muted'),
         s(direction === 'owe' ? 'I owe' : 'waiting on', direction === 'owe' ? 'accent' : 'wait', { bold: true }),
-        s(` · ${c.title} ${direction === 'owe' ? '→' : '←'} ${name} · `),
+        s(` · ${c.title} ${direction === 'owe' ? '→' : '←'} ${whoName(c.handle, name)} · `),
         c.project ? s(c.project.path, c.project.hue) : s('no project', 'dim'),
-        s(` · ${formatDay(c.dueOn)}`),
+        s(` · ${formatDay(c.dueOn, this.store.today())}`),
         ...(c.source !== 'other' ? [s(` · from ${c.source}`, 'muted')] : []),
       ];
     } catch (e) {

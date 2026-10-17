@@ -4,6 +4,7 @@ import * as t from '../db/schema';
 import { KeelError } from '../errors';
 import type { Parsed } from '../parse';
 import type { ProjectView, Store } from '../store';
+import { SELF, isSelf, whoPhrase } from '../self';
 import { commitmentData, inboxData, parseSource, projectSpan, type Command, type Source } from './shared';
 
 export type Direction = 'owe' | 'wait';
@@ -25,6 +26,7 @@ export async function readCommitment(k: Store, p: Parsed, direction: Direction):
   if (!title) throw new KeelError('What is the promise?', `Example: ${example}`);
   if (p.people.length === 0) throw new KeelError(direction === 'owe' ? 'Who do you owe it to? Add @name.' : 'Who owes it to you? Add @name.', `Example: ${example}`);
   if (p.people.length > 1) throw new KeelError('One person per commitment.', 'Split it into one commitment per person.');
+  if (direction === 'wait' && isSelf(p.people[0]!)) throw new KeelError("You can't wait on yourself.", `For something you'll do yourself: owe <what> @${SELF} due:<when>`);
   if (!p.kv.due) throw new KeelError('When is it due? Add due:<when>.', 'Examples: due:thu, due:tomorrow, due:+3d, due:2026-10-20');
   const dueOn = parseDue(p.kv.due, k.now());
   if (!dueOn) throw new KeelError(`Can't read the date "${p.kv.due}".`, 'Examples: due:thu, due:tomorrow, due:+3d, due:2026-10-20');
@@ -77,11 +79,11 @@ export async function commitmentQueries(
 }
 
 /** "c12 I owe Ravi · Thu 15 Oct · acme/website" */
-export function createdLine(ref: string, direction: Direction, personName: string, input: CommitmentInput): Span[] {
+export function createdLine(ref: string, direction: Direction, personName: string, input: CommitmentInput, today: string): Span[] {
   return [
     s(ref, 'default', { bold: true, ref }),
-    s(direction === 'owe' ? ` I owe ${personName}` : ` waiting on ${personName}`),
-    s(` · ${formatDay(input.dueOn)}`),
+    s(` ${whoPhrase(direction, input.handle, personName)}`),
+    s(` · ${formatDay(input.dueOn, today)}`),
     ...(input.project ? [s(' · '), projectSpan(input.project)] : [s(' · no project', 'dim')]),
   ];
 }
@@ -96,7 +98,7 @@ function commitmentCommand(direction: Direction): Command {
       const refNo = await k.nextRef(t.commitments);
       const created = await commitmentQueries(k, input, direction, refNo);
       await k.batch(created.queries);
-      return [ok(createdLine(created.ref, direction, created.personName, input)), data(commitmentData(await k.commitmentByRef(refNo)))];
+      return [ok(createdLine(created.ref, direction, created.personName, input, k.today())), data(commitmentData(await k.commitmentByRef(refNo)))];
     },
   };
 }
