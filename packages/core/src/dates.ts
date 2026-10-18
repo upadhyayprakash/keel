@@ -61,6 +61,21 @@ export function parseDue(input: string, now: Date): string | null {
   return parsed ? ymd(parsed) : null;
 }
 
+/**
+ * A step's cue: "sat 7:00 at the park" becomes { at: '2026-10-17T07:00', place: 'the park' }.
+ * Either part can be missing. A day without a time gives `at: undefined`, so the caller can ask for one.
+ */
+export function parseCue(input: string, now: Date): { at: string | null | undefined; place: string | null } {
+  const text = input.trim();
+  const place = (rest: string) => rest.trim().replace(/^(at|in|@)\s+/i, '').trim() || null;
+  const [found] = chrono.parse(text, now, { forwardDate: true });
+  if (!found) return { at: null, place: place(text) };
+  const rest = place(text.slice(0, found.index) + text.slice(found.index + found.text.length));
+  if (!found.start.isCertain('hour')) return { at: undefined, place: rest };
+  const d = found.start.date();
+  return { at: `${ymd(d)}T${pad(d.getHours())}:${pad(d.getMinutes())}`, place: rest };
+}
+
 /** "Thu 15 Oct", or "Sat 16 Oct 2027" when the year isn't the current one. */
 export function formatDay(day: string, today: string): string {
   const short = fromYmd(day).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });

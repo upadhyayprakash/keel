@@ -55,7 +55,7 @@ function validDay(value: string): boolean {
 const blank = (value: string | null | undefined) => !value || !value.trim();
 
 /** Checks the fields a goal can't do without. Throws the first problem, in words. */
-function checkFields(fields: GoalFields, today: string): void {
+export function checkGoalFields(fields: GoalFields, today: string): void {
   if (fields.title !== undefined && blank(fields.title)) throw new KeelError('A goal needs a name.', 'For example: Run 5 km');
   if (fields.doneMeans !== undefined && blank(fields.doneMeans)) {
     throw new KeelError('Say what done looks like.', 'Something you could check, like "I run 5 km in one go".');
@@ -81,6 +81,17 @@ function checkSteps(steps: NewStep[]): void {
     }
   });
   if (steps.filter((s) => s.firstStep).length > 1) throw new KeelError('Only one step can be the first step.');
+}
+
+/**
+ * Progress, showing the smaller part (Koo and Fishbach 2012): "1 of 4 done"
+ * until halfway, then "2 left".
+ */
+export function progressLabel(steps: Pick<GoalStep, 'status'>[]): string {
+  const total = steps.length;
+  const done = steps.filter((st) => st.status === 'done').length;
+  if (total && done === total) return 'all steps done';
+  return done * 2 < total ? `${done} of ${total} done` : `${total - done} left`;
 }
 
 const trimmed = (value: string | null | undefined) => (blank(value) ? null : value!.trim());
@@ -124,7 +135,7 @@ export async function listGoals(k: Store, status?: GoalStatus): Promise<GoalView
 
 export async function createGoal(k: Store, input: NewGoal): Promise<GoalView> {
   const fields = { title: input.title, doneMeans: input.doneMeans, dueOn: input.dueOn, plan: input.plan };
-  checkFields(fields, k.today());
+  checkGoalFields(fields, k.today());
   checkSteps(input.steps);
   const id = k.newId();
   const refNo = await k.nextRef(t.goals);
@@ -163,7 +174,7 @@ export async function createGoal(k: Store, input: NewGoal): Promise<GoalView> {
 /** Last arrival wins, per field: only the fields given are written. */
 export async function updateGoal(k: Store, ref: string, fields: GoalFields): Promise<GoalView> {
   const { goal } = await findGoal(k, ref);
-  checkFields(fields, k.today());
+  checkGoalFields(fields, k.today());
   const set: Record<string, string | null> = {};
   for (const [key, value] of Object.entries(fields) as [keyof GoalFields, string | null | undefined][]) {
     if (value === undefined) continue;

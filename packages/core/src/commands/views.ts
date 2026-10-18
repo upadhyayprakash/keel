@@ -6,6 +6,7 @@ import * as t from '../db/schema';
 import { KeelError } from '../errors';
 import { parseRef } from '../parse';
 import type { CommitmentView, Store } from '../store';
+import { showGoal } from './goals';
 import { commitmentData, commitmentRow, inboxData, matchesScope, noteData, projectData, projectSpan, type Command } from './shared';
 
 const STALE_DAYS = 7;
@@ -181,11 +182,13 @@ export const ls: Command = {
 
 export const show: Command = {
   name: 'show',
-  usage: 'show <c42|p7|i3>',
+  usage: 'show <c42|p7|i3|g1>',
   summary: 'Details and history of one item',
   async run(k, p) {
+    // Goal refs are clickable like the others, so `show g1` shows the goal.
+    if (/^g\d+$/i.test(p.words[0] ?? '')) return showGoal(k, p.words[0]!);
     const ref = parseRef(p.words[0]);
-    if (!ref) throw new KeelError('Which item?', 'Example: show c42, show p7, show i3');
+    if (!ref) throw new KeelError('Which item?', 'Example: show c42, show p7, show i3, show g1');
     const day = k.today();
 
     if (ref.kind === 'c') {

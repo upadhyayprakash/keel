@@ -3,6 +3,7 @@ import { commands, expand, findCommand } from './commands/index';
 import { SOURCES } from './commands/shared';
 import { formatDay, parseDue } from './dates';
 import * as t from './db/schema';
+import { findGoal, goalRef, listGoals } from './goals';
 import { SELF } from './self';
 import type { Store } from './store';
 
@@ -38,6 +39,7 @@ const WORDS: Record<string, Choice[][]> = {
   summary: [[['week', 'this week'], ['day', 'today'], ['last', 'last week']]],
   theme: [[['light'], ['dark'], ['auto', 'follow the terminal or OS']]],
   export: [[['--json', 'everything, to back up or move'], ['--md', 'a readable snapshot']]],
+  goal: [[['new', 'set a small goal'], ['ls', 'active goals'], ['show', 'one goal and its steps'], ['step', 'mark a step done'], ['done', 'finish a goal'], ['drop', 'stop a goal on purpose']]],
 };
 
 /**
@@ -61,7 +63,7 @@ export async function suggest(k: Store, input: string): Promise<Omit<Completion,
   // First word: commands and their shortcuts.
   if (words.length === 0) {
     for (const c of commands) offer(c.name, c.summary, false, c.usage);
-    for (const [name, detail] of [['clients', 'list clients'], ['projects', 'list projects'], ['people', 'list people'], ['inbox', 'what you captured']]) offer(name!, detail);
+    for (const [name, detail] of [['clients', 'list clients'], ['projects', 'list projects'], ['people', 'list people'], ['inbox', 'what you captured'], ['goals', 'active goals']]) offer(name!, detail);
     return done();
   }
 
@@ -85,6 +87,8 @@ export async function suggest(k: Store, input: string): Promise<Omit<Completion,
       .map((v): Choice => [`c${v.c.refNo}`, `${v.c.title} · @${v.person}`]);
   const projectRefs = async () => (await k.listProjects()).map((pv): Choice => [`p${pv.project.refNo}`, pv.path]);
   const inboxRefs = async () => (await k.openInbox()).map((i): Choice => [`i${i.refNo}`, i.text]);
+  const goalRefs = async (activeOnly: boolean) =>
+    (await listGoals(k)).filter((v) => !activeOnly || v.goal.status === 'active').map((v): Choice => [goalRef(v.goal), v.goal.title]);
   const add = (choices: Choice[], continues = false) => choices.forEach(([insert, detail]) => offer(insert, detail, continues));
   const keys = (names: string[]) => names.filter((n) => !args.some((a) => a.startsWith(`${n}:`))).forEach((n) => offer(`${n}:`, undefined, true));
 
@@ -173,7 +177,22 @@ export async function suggest(k: Store, input: string): Promise<Omit<Completion,
       if (pos === 0) add([...(await openRefs()), ...(await inboxRefs())]);
       break;
     case 'show':
-      if (pos === 0) add([...(await openRefs()), ...(await projectRefs()), ...(await inboxRefs())]);
+      if (pos === 0) add([...(await openRefs()), ...(await projectRefs()), ...(await inboxRefs()), ...(await goalRefs(true))]);
+      break;
+    case 'goal':
+      if (sub === 'step') {
+        if (pos === 1) add([['done', 'mark a step done']]);
+        else if (args[1] === 'done' && pos === 2) add(await goalRefs(true));
+        else if (args[1] === 'done' && pos === 3) {
+          const view = await findGoal(k, args[2]!).catch(() => null);
+          add((view?.steps ?? []).filter((st) => st.status === 'open').map((st): Choice => [String(st.position), st.text]));
+        }
+      } else if (pos === 1 && (sub === 'show' || sub === 'done' || sub === 'drop')) {
+        add(await goalRefs(sub !== 'show'));
+      } else if (sub === 'new' && pos >= 1 && /^[a-z]{2,}$/.test(current)) {
+        keys(['done', 'due', 'time', 'obstacle', 'plan']);
+        offer('step:', 'one per step', true);
+      }
       break;
     case 'meeting':
     case 'today':

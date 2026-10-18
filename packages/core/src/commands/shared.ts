@@ -1,6 +1,7 @@
 import { s, type Block, type Question, type Span } from '../blocks';
 import { describeDue } from '../dates';
 import { KeelError } from '../errors';
+import { goalRef, type GoalView } from '../goals';
 import { parseRef, type Parsed } from '../parse';
 import type { CommitmentView, InboxItem, ProjectView, ResumeNote, Store } from '../store';
 
@@ -118,6 +119,33 @@ export function inboxData(item: InboxItem, project: string | null) {
     createdAt: item.createdAt,
     triagedAt: item.triagedAt,
     deleted: Boolean(item.deletedAt),
+  };
+}
+
+export function goalData({ goal, steps }: GoalView) {
+  return {
+    ref: goalRef(goal),
+    id: goal.id,
+    title: goal.title,
+    doneMeans: goal.doneMeans,
+    dueOn: goal.dueOn,
+    appetite: goal.appetite,
+    obstacle: goal.obstacle,
+    plan: goal.plan,
+    status: goal.status,
+    progress: { done: steps.filter((st) => st.status === 'done').length, total: steps.length },
+    steps: steps.map((st) => ({
+      position: st.position,
+      text: st.text,
+      cueAt: st.cueAt,
+      cuePlace: st.cuePlace,
+      minimum: st.minimum,
+      firstStep: st.firstStep,
+      status: st.status,
+      doneAt: st.doneAt,
+    })),
+    createdAt: goal.createdAt,
+    closedAt: goal.closedAt,
   };
 }
 

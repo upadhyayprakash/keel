@@ -1,0 +1,63 @@
+---
+title: "Goals"
+description: "Set one small goal, plan around what gets in the way, and finish it."
+---
+
+A goal in Keel is something small you can finish in days or weeks, like running 5 km or reading one book. Keel asks for the parts that make a goal more likely to get done: what done looks like, a deadline, the thing most likely to get in the way, and a plan for it.
+
+## Set a goal
+
+```text
+goal new "Run 5 km"
+```
+
+Keel asks one question at a time:
+
+<Steps>
+  <Step title="What does done look like?">Something you could check: `I run 5 km in one go`.</Step>
+  <Step title="Deadline">`nov 8`, `+3w` or `2026-11-08`.</Step>
+  <Step title="How much time will you give it?">`30 minutes a day`. Press Enter to skip.</Step>
+  <Step title="What could get in the way?">One thing: `rainy mornings`.</Step>
+  <Step title="Your if-then plan">`If it rains at 7:00, then I will do 20 minutes on the treadmill`. It has to read "If ..., then ...".</Step>
+  <Step title="The steps">One per question. Make the first one take under 10 minutes. For each step, Keel asks when and where (`sat 7:00 at the park`) and a smaller version for a bad day (`10 minutes`). An empty line ends the list.</Step>
+</Steps>
+
+```text
+✓ g1 Run 5 km · Sun 8 Nov · 4 steps
+  First step: Put my shoes by the door. When it's done: goal step done g1 1
+```
+
+You can give any of the answers in one line, and Keel asks only for the rest. Each `step:` adds a step, without a time or place:
+
+```text
+goal new "Read a book" done:"last page" due:+3w obstacle:"tired evenings" plan:"If I am tired, then I will read 2 pages" step:"pick the book" step:"read chapter 1"
+```
+
+With `--json`, nothing is asked, so give `done:`, `due:`, `obstacle:`, `plan:` and at least one `step:`.
+
+## See your goals
+
+```text
+goals            # active goals
+goals --all      # closed ones too
+goal show g1     # one goal and its steps (show g1 works too)
+```
+
+Progress shows the smaller part: `1 of 4 done` until halfway, then `2 left`.
+
+## Move it along
+
+```text
+goal step done g1 2
+```
+
+Keel then shows the next open step. A step can be done once: if you marked it on another device first, Keel says when.
+
+When the goal is finished, or you decide to stop on purpose:
+
+```text
+goal done g1
+goal drop g1
+```
+
+A closed goal stays closed. Start a new one with `goal new`.
