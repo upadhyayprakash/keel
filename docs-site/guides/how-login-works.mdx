@@ -91,6 +91,7 @@ Codes are optional. They help in a browser without passkeys, and at local addres
 - The page itself always loads, so you can see the sign-in screen. Your data only comes through the API, which needs a session.
 - The session lives in a cookie the page's scripts can't read (`HttpOnly`), that is only sent over HTTPS (`Secure`), and that other sites can't use to send commands.
 - A browser terminal session also opens Goals, but not the other way round.
+- Opening Goals without a session takes you to the sign-in page, and back to the same Goals page afterwards. So does a session that ends while Goals is open.
 
 ## How long a sign-in lasts
 
