@@ -147,11 +147,13 @@ interface FieldProps {
   /** Shown under the field in `late`; the border turns `late` too. The fill stays (D22). */
   error?: string | null;
   multiline?: boolean;
-  type?: 'text' | 'date';
+  type?: 'text' | 'date' | 'datetime-local';
+  /** Earliest date for `type: 'date'`. */
+  min?: string;
 }
 
-/** A labelled input. `type: 'date'` uses the phone's own date picker. */
-export function Field({ label, value, onChange, helper, placeholder, error, multiline, type = 'text' }: FieldProps) {
+/** A labelled input. `type: 'date'` and `'datetime-local'` use the phone's own pickers. */
+export function Field({ label, value, onChange, helper, placeholder, error, multiline, type = 'text', min }: FieldProps) {
   const id = useId();
   const described = [helper ? `${id}-help` : '', error ? `${id}-error` : ''].filter(Boolean).join(' ') || undefined;
   const common = {
@@ -175,7 +177,7 @@ export function Field({ label, value, onChange, helper, placeholder, error, mult
       {multiline ? (
         <textarea {...common} rows={3} onChange={(e) => onChange(e.target.value)} />
       ) : (
-        <input {...common} type={type} onChange={(e) => onChange(e.target.value)} />
+        <input {...common} type={type} min={min} onChange={(e) => onChange(e.target.value)} />
       )}
       {error ? (
         <p id={`${id}-error`} className="field-error" role="alert">

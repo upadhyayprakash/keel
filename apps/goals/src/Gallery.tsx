@@ -24,7 +24,7 @@ export function Gallery() {
   };
 
   return (
-    <main className="body">
+    <>
       <ScreenTitle title="Components" sub={`dev gallery · ${theme}`} />
       <Button variant="outline" onClick={flip}>
         Switch to {theme === 'light' ? 'dark' : 'light'}
@@ -97,6 +97,6 @@ export function Gallery() {
         <Button>+ Add step</Button>
       </div>
       <Button variant="link">I'll skip it</Button>
-    </main>
+    </>
   );
 }

@@ -1,5 +1,8 @@
 import { lazy, Suspense, useEffect, useState, type ReactNode } from 'react';
 import { authState, goSignIn, needsSignIn } from './api';
+import { useRoute } from './router';
+import { NewGoal } from './screens/NewGoal';
+import { Today } from './screens/Today';
 import { Header } from './ui';
 
 // Dev only: /goals/#gallery shows every shared component. Vite drops this from production builds.
@@ -18,14 +21,13 @@ function Gate({ children }: { children: ReactNode }) {
     );
   }, []);
   if (state === 'open') return <>{children}</>;
-  if (state === 'offline') {
-    return (
-      <main className="body">
-        <p className="muted">Keel is not reachable. Is keel serve running on your computer?</p>
-      </main>
-    );
-  }
+  if (state === 'offline') return <p className="muted">Keel is not reachable. Is keel serve running on your computer?</p>;
   return null;
+}
+
+function Screen() {
+  const route = useRoute();
+  return route.name === 'new' ? <NewGoal /> : <Today />;
 }
 
 export function App() {
@@ -33,18 +35,17 @@ export function App() {
   return (
     <div className="screen">
       <Header />
-      {gallery ? (
-        <Suspense fallback={null}>
-          <Gallery />
-        </Suspense>
-      ) : (
-        <Gate>
-          <main className="body">
-            <h1 className="title">Today</h1>
-            <p className="muted">No goals yet. Setting one up arrives in a later release.</p>
-          </main>
-        </Gate>
-      )}
+      <main className="body">
+        {gallery ? (
+          <Suspense fallback={null}>
+            <Gallery />
+          </Suspense>
+        ) : (
+          <Gate>
+            <Screen />
+          </Gate>
+        )}
+      </main>
     </div>
   );
 }
