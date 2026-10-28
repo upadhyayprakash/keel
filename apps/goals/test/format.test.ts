@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { cueLabel, dayDiff, daysLeft, formatDay, fraction } from '../src/format';
+import { cueLabel, dayDiff, daysLeft, formatDay, fraction, seenAt } from '../src/format';
 
 // Monday 12 October 2026.
 const TODAY = '2026-10-12';
@@ -45,5 +45,19 @@ describe('fraction', () => {
     expect(fraction(4, 12)).toBeCloseTo(1 / 3);
     expect(fraction(0, 0)).toBe(0);
     expect(fraction(5, 3)).toBe(1);
+  });
+});
+
+describe('seenAt', () => {
+  const now = new Date(2026, 9, 28, 16, 30);
+
+  it('says the time the same day, and yesterday', () => {
+    expect(seenAt(new Date(2026, 9, 28, 14, 5).toISOString(), now)).toBe('at 14:05');
+    expect(seenAt(new Date(2026, 9, 28, 9, 5).toISOString(), now)).toBe('at 9:05');
+    expect(seenAt(new Date(2026, 9, 27, 21, 40).toISOString(), now)).toBe('yesterday at 21:40');
+  });
+
+  it('names the day when older', () => {
+    expect(seenAt(new Date(2026, 9, 25, 7, 0).toISOString(), now)).toBe('on Sun 25 Oct at 7:00');
   });
 });

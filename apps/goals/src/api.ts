@@ -34,6 +34,11 @@ export class ApiError extends Error {
   }
 }
 
+export const NOT_REACHABLE = 'Keel is not reachable. Is keel serve running on your computer?';
+
+/** Keel itself did not answer: no network, or the tunnel had nothing behind it (502 to 504). */
+export const unreachable = (e: unknown): e is ApiError => e instanceof ApiError && (e.status === 0 || (e.status >= 502 && e.status <= 504));
+
 /** Calls the API. A 401 means the session ended: go and sign in again. */
 export async function api<T>(path: string, init: { method?: string; body?: unknown } = {}): Promise<T> {
   const res = await fetch(path, {
@@ -41,13 +46,18 @@ export async function api<T>(path: string, init: { method?: string; body?: unkno
     headers: init.body === undefined ? {} : { 'content-type': 'application/json' },
     body: init.body === undefined ? undefined : JSON.stringify(init.body),
     credentials: 'same-origin',
+  }).catch(() => {
+    throw new ApiError(NOT_REACHABLE, 0);
   });
   if (res.status === 401) {
     goSignIn();
     throw new ApiError('Sign in first.', 401);
   }
   const data = (await res.json().catch(() => null)) as (T & { error?: string; hint?: string | null; field?: string | null }) | null;
-  if (!res.ok) throw new ApiError(data?.error ?? `Keel answered ${res.status}.`, res.status, data?.hint ?? null, data?.field ?? null);
+  if (!res.ok) {
+    const fallback = res.status >= 502 && res.status <= 504 ? NOT_REACHABLE : `Keel answered ${res.status}.`;
+    throw new ApiError(data?.error ?? fallback, res.status, data?.hint ?? null, data?.field ?? null);
+  }
   return data as T;
 }
 

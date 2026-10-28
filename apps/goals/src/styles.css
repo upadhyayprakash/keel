@@ -192,6 +192,10 @@ body {
   color: var(--t-late);
 }
 
+.tone-done {
+  color: var(--t-done);
+}
+
 .status-line {
   display: flex;
   align-items: baseline;
@@ -529,4 +533,112 @@ body {
   font: inherit;
   font-size: 18px;
   cursor: pointer;
+}
+
+/* Not live: the last-seen copy, with a retry (screens 01 and 04). */
+.not-live {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0 12px;
+  margin: -4px 0 14px;
+}
+
+.not-live .status-line {
+  flex: 1 1 220px;
+  margin: 0;
+}
+
+.not-live .btn-link {
+  min-height: 44px;
+  padding: 0 4px;
+}
+
+/* Screen 04: goal detail. */
+.done-means {
+  margin: 0 0 4px;
+  font-size: 13px;
+}
+
+.plan-show {
+  margin-top: 14px;
+}
+
+.plan-show .field-label {
+  margin-bottom: 4px;
+}
+
+.plan-show p {
+  margin: 0;
+  font-size: 13px;
+}
+
+.group-head {
+  margin: 0 0 4px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.step-list,
+.done-list {
+  margin: 0 0 16px;
+  padding: 0;
+  list-style: none;
+}
+
+.step-list li {
+  border-bottom: 1px solid var(--line);
+}
+
+.step-list .checkbox-label {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+.step-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.step-chips:empty {
+  display: none;
+}
+
+.step-list .step-min {
+  margin: 0;
+}
+
+.done-list li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 3px 0;
+  font-size: 13px;
+}
+
+.done-list svg {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  padding: 3px;
+  border-radius: 50%;
+  background: var(--t-done);
+  fill: none;
+  stroke: var(--bg);
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.show-all {
+  margin-top: -12px;
+  padding: 10px 0;
+}
+
+.all-done {
+  margin: 14px 0;
 }

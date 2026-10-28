@@ -1,5 +1,6 @@
 import { useId, type ReactNode } from 'react';
-import { cueLabel, fraction } from './format';
+import { NOT_REACHABLE } from './api';
+import { cueLabel, fraction, seenAt } from './format';
 
 // The Goals app's building blocks (designs/SCREENS.md, "Shared across screens").
 // Colours only through the CSS variables theme.ts writes from @keel/core palettes.
@@ -81,8 +82,8 @@ export function StatusChip({ children, tone = 'accent' }: { children: ReactNode;
   return <span className={`chip chip-status tone-${tone}`}>{children}</span>;
 }
 
-/** A dot and a line: "Ravi is following this goal" (`wait`), "Missed yesterday: ..." (`today`). */
-export function StatusLine({ children, tone }: { children: ReactNode; tone: 'wait' | 'today' | 'late' }) {
+/** A dot and a line: "Ravi is following this goal" (`wait`), "Missed yesterday: ..." (`today`), "Done on Sat 8 Nov" (`done`). */
+export function StatusLine({ children, tone }: { children: ReactNode; tone: 'wait' | 'today' | 'late' | 'done' }) {
   return (
     <p className={`status-line tone-${tone}`}>
       <span className="dot" aria-hidden="true" />
@@ -210,5 +211,17 @@ export function Button({ children, variant = 'primary', onClick, disabled, type 
     <button type={type} className={`btn btn-${variant}`} onClick={onClick} disabled={disabled}>
       {children}
     </button>
+  );
+}
+
+/** Above a screen that shows the last-seen copy: how old it is, and a retry. Without a copy, just why. */
+export function NotLive({ savedAt, onRetry }: { savedAt: string | null; onRetry: () => void }) {
+  return (
+    <div className="not-live" role="status">
+      <StatusLine tone="today">{savedAt ? `Not live. This is what your phone last saw, ${seenAt(savedAt)}: Keel is not reachable, so nothing can change until it is.` : NOT_REACHABLE}</StatusLine>
+      <Button variant="link" onClick={onRetry}>
+        Try again
+      </Button>
+    </div>
   );
 }

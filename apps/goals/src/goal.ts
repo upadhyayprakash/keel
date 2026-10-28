@@ -44,3 +44,6 @@ export function composePlan(when: string, what: string): string {
   const t = what.trim().replace(/^(then\s+)?(i\s+will\s+)?/i, '').replace(/\.\s*$/, '');
   return `If ${w}, then I will ${t}.`;
 }
+
+/** The step Today offers: the first open one. Null when every step is done. */
+export const nextStep = (goal: Goal): GoalStep | null => goal.steps.find((s) => s.status === 'open') ?? null;

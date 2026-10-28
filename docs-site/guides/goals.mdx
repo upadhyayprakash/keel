@@ -42,7 +42,11 @@ With `keel serve` running, open `/goals` on your phone (see [phone login](/guide
 1. **The finish line:** the goal, what done means, the deadline and the time you will give it.
 2. **The plan for the hard part:** what is most likely to stop you, then your plan as two blanks, "If ..." and "then I will ...". Keel needs the plan to save. Then add steps, the first one tiny, each with an optional time, place and minimum version.
 
-**Start goal** saves it, and Today shows it with its progress. Goals made on the phone and in the CLI are the same goals.
+**Start goal** saves it, and Today shows it with its progress and its next step. Tap the round check to mark that step done, or tap the goal to see all of it: what done means, your plan, the steps still open (tick any of them) and the ones already done. Goals made on the phone and in the CLI are the same goals.
+
+### When your computer sleeps
+
+The phone app talks to `keel serve` on your computer. When it can't reach it, the app still opens and shows the goals as your phone last saw them, marked **Not live** with the time. Nothing can change until Keel is back: a step you tick is not saved for later, and Keel says so. Tap **Try again** once `keel serve` is running. To keep Goals live all day, run `keel serve` on a machine that stays on.
 
 ## See your goals
 

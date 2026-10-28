@@ -1,20 +1,26 @@
 import { useEffect, useState } from 'react';
 
-// Two routes for now: /goals/ (Today) and /goals/new. keel serve answers every
+// /goals/ (Today), /goals/new and /goals/<ref> (a goal, `g3`). keel serve answers every
 // /goals/... path with the app, so a reload or a shared link lands on the same screen.
 
-export type Route = { name: 'today' } | { name: 'new' };
+export type Route = { name: 'today' } | { name: 'new' } | { name: 'goal'; ref: string };
 
 export function routeOf(pathname: string): Route {
   const rest = pathname.replace(/^\/goals\/?/, '').replace(/\/$/, '');
-  return rest === 'new' ? { name: 'new' } : { name: 'today' };
+  if (rest === 'new') return { name: 'new' };
+  if (/^g\d+$/i.test(rest)) return { name: 'goal', ref: rest.toLowerCase() };
+  return { name: 'today' };
 }
 
-const PATHS: Record<Route['name'], string> = { today: '/goals/', new: '/goals/new' };
+export function pathOf(route: Route): string {
+  if (route.name === 'goal') return `/goals/${route.ref}`;
+  return route.name === 'new' ? '/goals/new' : '/goals/';
+}
 
-export function go(name: Route['name'], { replace = false } = {}): void {
-  if (replace) window.history.replaceState(null, '', PATHS[name]);
-  else window.history.pushState(null, '', PATHS[name]);
+export function go(to: Route | 'today' | 'new', { replace = false } = {}): void {
+  const path = pathOf(typeof to === 'string' ? { name: to } : to);
+  if (replace) window.history.replaceState(null, '', path);
+  else window.history.pushState(null, '', path);
   window.dispatchEvent(new PopStateEvent('popstate'));
   window.scrollTo(0, 0);
 }

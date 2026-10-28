@@ -47,3 +47,17 @@ export function cueLabel(cueAt: string | null, place: string | null, today: stri
 
 /** Share of steps done, 0 to 1, for the progress bar. */
 export const fraction = (done: number, total: number) => (total > 0 ? Math.min(1, Math.max(0, done / total)) : 0);
+
+/**
+ * When the not-live copy was saved, in this phone's own time: "at 14:05" the same day,
+ * "yesterday at 21:40", then "on Tue 27 Oct at 9:15".
+ */
+export function seenAt(savedAt: string, now = new Date()): string {
+  const at = new Date(savedAt);
+  const time = clock(at.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false }));
+  const day = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+  const days = Math.round((day(now) - day(at)) / 86_400_000);
+  if (days === 0) return `at ${time}`;
+  if (days === 1) return `yesterday at ${time}`;
+  return `on ${at.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })} at ${time}`;
+}

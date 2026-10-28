@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect, useState, type ReactNode } from 'react';
-import { authState, goSignIn, needsSignIn } from './api';
+import { authState, goSignIn, needsSignIn, unreachable } from './api';
 import { useRoute } from './router';
+import { GoalDetail } from './screens/GoalDetail';
 import { NewGoal } from './screens/NewGoal';
 import { Today } from './screens/Today';
 import { Header } from './ui';
@@ -11,23 +12,26 @@ const Gallery = import.meta.env.DEV ? lazy(() => import('./Gallery').then((m) =>
 /**
  * Opens the app once Keel says this phone may: no login set up, or a Goals session.
  * Otherwise it leaves for the sign-in page, which comes back here (ADR 0002).
+ * When Keel is not reachable, it opens anyway: the screens show what this phone last saw.
  */
 function Gate({ children }: { children: ReactNode }) {
-  const [state, setState] = useState<'checking' | 'open' | 'offline'>('checking');
+  const [state, setState] = useState<'checking' | 'open' | { error: string }>('checking');
   useEffect(() => {
     authState().then(
       (s) => (needsSignIn(s) ? goSignIn() : setState('open')),
-      () => setState('offline'),
+      (e: Error) => setState(unreachable(e) ? 'open' : { error: e.message }),
     );
   }, []);
   if (state === 'open') return <>{children}</>;
-  if (state === 'offline') return <p className="muted">Keel is not reachable. Is keel serve running on your computer?</p>;
+  if (typeof state === 'object') return <p className="muted">{state.error}</p>;
   return null;
 }
 
 function Screen() {
   const route = useRoute();
-  return route.name === 'new' ? <NewGoal /> : <Today />;
+  if (route.name === 'new') return <NewGoal />;
+  if (route.name === 'goal') return <GoalDetail key={route.ref} goalRef={route.ref} />;
+  return <Today />;
 }
 
 export function App() {
