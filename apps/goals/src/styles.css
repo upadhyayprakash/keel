@@ -75,3 +75,382 @@ body {
   outline: 2px solid var(--t-accent);
   outline-offset: 2px;
 }
+
+/* ---- Shared components (ui.tsx). Radii: cards 12px, inputs and buttons 10px, chips 8px (designs/TOKENS.md). ---- */
+
+.top-action {
+  margin-left: auto;
+}
+
+.screen-title {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.screen-title .title {
+  margin: 0;
+}
+
+.sub {
+  margin: 2px 0 0;
+  color: var(--t-muted);
+  font-size: 13px;
+}
+
+.back {
+  min-width: 44px;
+  min-height: 44px;
+  margin: -8px 0 0 -12px;
+  border: 0;
+  background: none;
+  color: var(--t-default);
+  font: inherit;
+  font-size: 20px;
+  cursor: pointer;
+}
+
+.card {
+  margin-bottom: 12px;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel);
+}
+
+.card-wait {
+  border-color: transparent;
+  background: var(--wait-tint);
+  color: var(--t-wait);
+}
+
+.card-open {
+  cursor: pointer;
+}
+
+.card h2 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.progress {
+  margin: 10px 0 4px;
+}
+
+.progress-track {
+  height: 6px;
+  overflow: hidden;
+  border-radius: 3px;
+  background: var(--selection);
+}
+
+.progress-fill {
+  height: 100%;
+  border-radius: 3px;
+  background: var(--t-accent);
+}
+
+.progress-label {
+  margin: 6px 0 0;
+  color: var(--t-muted);
+  font-size: 12px;
+}
+
+.chip {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 8px;
+  font-size: 12px;
+  line-height: 1.6;
+  white-space: nowrap;
+}
+
+.chip-cue {
+  background: var(--selection);
+  color: var(--t-default);
+}
+
+.chip-status {
+  background: var(--accent-tint);
+}
+
+.tone-accent {
+  color: var(--t-accent);
+}
+
+.tone-today {
+  color: var(--t-today);
+}
+
+.tone-wait {
+  color: var(--t-wait);
+}
+
+.tone-late {
+  color: var(--t-late);
+}
+
+.status-line {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 10px 0 0;
+  font-size: 12px;
+}
+
+.status-line .dot {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+  transform: translateY(-1px);
+}
+
+/* Round check: 44px touch target around a 28px circle. */
+.check {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+
+.check svg {
+  width: 28px;
+  height: 28px;
+  padding: 4px;
+  border: 1.5px solid var(--t-muted);
+  border-radius: 50%;
+  fill: none;
+  stroke: var(--t-muted);
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.check-on svg {
+  border-color: var(--t-done);
+  background: var(--t-done);
+  stroke: var(--bg);
+}
+
+.check:disabled {
+  cursor: default;
+}
+
+.checkbox {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  min-height: 44px;
+  padding: 10px 0;
+  cursor: pointer;
+}
+
+.checkbox input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.checkbox .box {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  margin-top: 1px;
+  border: 1.5px solid var(--t-muted);
+  border-radius: 4px;
+}
+
+.checkbox .box svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: var(--on-accent);
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  visibility: hidden;
+}
+
+.checkbox input:checked + .box {
+  border-color: var(--t-accent);
+  background: var(--t-accent);
+}
+
+.checkbox input:checked + .box svg {
+  visibility: visible;
+}
+
+.checkbox input:focus-visible + .box {
+  outline: 2px solid var(--t-accent);
+  outline-offset: 2px;
+}
+
+.step-bar {
+  display: flex;
+  gap: 8px;
+  margin: 8px 0 20px;
+}
+
+.step-bar span {
+  flex: 1;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--selection);
+}
+
+.step-bar span.on {
+  background: var(--t-accent);
+}
+
+.field,
+.choices {
+  margin: 0 0 18px;
+  padding: 0;
+  border: 0;
+}
+
+.field-label {
+  display: block;
+  margin-bottom: 6px;
+  padding: 0;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.field-help {
+  margin: -4px 0 6px;
+  color: var(--t-muted);
+  font-size: 12px;
+}
+
+.input {
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--panel);
+  color: var(--t-default);
+  font: inherit;
+  resize: vertical;
+}
+
+.input::placeholder {
+  color: var(--t-dim);
+}
+
+.input:focus {
+  border-color: var(--t-accent);
+  outline: none;
+}
+
+/* The error keeps the field's fill; the border and the line under it carry it (D22). */
+.input-error,
+.input-error:focus {
+  border-color: var(--t-late);
+}
+
+.field-error {
+  margin: 6px 0 0;
+  color: var(--t-late);
+  font-size: 12px;
+}
+
+.choice-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.choice {
+  min-height: 40px;
+  padding: 6px 16px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  color: var(--t-default);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.choice-on {
+  border-color: var(--t-accent);
+  background: var(--t-accent);
+  color: var(--on-accent);
+}
+
+.btn {
+  min-height: 44px;
+  padding: 10px 16px;
+  border-radius: 10px;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.btn-primary {
+  width: 100%;
+  border: 1px solid var(--t-accent);
+  background: var(--t-accent);
+  color: var(--on-accent);
+}
+
+.btn-outline {
+  border: 1px solid var(--line);
+  background: var(--bg);
+  color: var(--t-default);
+  font-weight: 400;
+}
+
+.btn-link {
+  border: 0;
+  background: none;
+  color: var(--t-accent);
+  font-weight: 400;
+  text-decoration: underline;
+}
+
+.btn:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+/* Today card: the next step with its check button on the right. */
+.next {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+
+.next-step {
+  margin: 0 0 6px;
+}
+
+.button-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.gallery-head {
+  margin: 28px 0 10px;
+  color: var(--t-muted);
+  font-size: 12px;
+  font-weight: 400;
+}
