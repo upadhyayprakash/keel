@@ -9,12 +9,16 @@ const HOST = { host: '127.0.0.1:4242' };
 let keel: Keel;
 let app: ReturnType<typeof createApp>;
 let dist: string;
+let goalsDist: string;
 
 beforeEach(async () => {
   keel = await Keel.open({ url: ':memory:' });
   dist = mkdtempSync(join(tmpdir(), 'keel-web-'));
   writeFileSync(join(dist, 'index.html'), '<title>keel</title>');
-  app = createApp({ keel, port: 4242, webDist: dist });
+  goalsDist = mkdtempSync(join(tmpdir(), 'keel-goals-'));
+  writeFileSync(join(goalsDist, 'index.html'), '<title>keel goals</title>');
+  writeFileSync(join(goalsDist, 'manifest.webmanifest'), '{"name":"keel goals"}');
+  app = createApp({ keel, port: 4242, webDist: dist, goalsDist });
 });
 
 afterEach(() => keel.close());
@@ -71,5 +75,25 @@ describe('api', () => {
     expect(await (await app.request('/', { headers: HOST })).text()).toContain('<title>keel</title>');
     const escape = await app.request('/..%2f..%2fetc%2fpasswd', { headers: HOST });
     expect(await escape.text()).toContain('<title>keel</title>');
+  });
+
+  it('serves the Goals app at /goals, apart from the browser terminal', async () => {
+    const bare = await app.request('/goals', { headers: HOST });
+    expect(bare.status).toBe(302);
+    expect(bare.headers.get('location')).toBe('/goals/');
+    expect(await (await app.request('/goals/', { headers: HOST })).text()).toContain('<title>keel goals</title>');
+    expect(await (await app.request('/goals/today', { headers: HOST })).text()).toContain('<title>keel goals</title>');
+    const manifest = await app.request('/goals/manifest.webmanifest', { headers: HOST });
+    expect(manifest.headers.get('content-type')).toBe('application/manifest+json');
+    const escape = await app.request('/goals/..%2f..%2fetc%2fpasswd', { headers: HOST });
+    expect(await escape.text()).toContain('<title>keel goals</title>');
+    expect(await (await app.request('/', { headers: HOST })).text()).toContain('<title>keel</title>');
+  });
+
+  it('says when the Goals app is not built', async () => {
+    const bare = createApp({ keel, port: 4242, webDist: dist, goalsDist: mkdtempSync(join(tmpdir(), 'keel-empty-')) });
+    const res = await bare.request('/goals/', { headers: HOST });
+    expect(res.status).toBe(503);
+    expect(await res.text()).toContain('The Goals app is not built yet');
   });
 });

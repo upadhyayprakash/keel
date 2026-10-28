@@ -48,6 +48,7 @@
           "guides/meetings",
           "guides/switching-projects",
           "guides/weekly-review",
+          "guides/goals",
           "guides/tidying-up",
           "guides/browser-terminal",
           "guides/several-devices",
@@ -55,8 +56,12 @@
         ]
       },
       {
+        "group": "Phone and login",
+        "pages": ["guides/phone-login", "guides/how-login-works"]
+      },
+      {
         "group": "Reference",
-        "pages": ["reference/commands", "reference/syntax", "reference/json", "reference/environment"]
+        "pages": ["reference/commands", "reference/syntax", "reference/json", "reference/goals-api", "reference/environment"]
       },
       {
         "group": "Project",

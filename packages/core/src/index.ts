@@ -2,10 +2,14 @@ export { Keel, type KeelOptions, type KeelState, type Storage, type Completion, 
 export { contentCounts, exportJson, importDump, isEmpty, parseExport } from './commands/backup';
 export { isConnectionError } from './db/client';
 export { renderText, type Paint } from './render-text';
-export { KeelError } from './errors';
+export { Conflict, KeelError, NotFound } from './errors';
+export { goalData } from './commands/shared';
+export * from './goals';
 export { VERSION } from './version';
 export { autoBackup, type AutoBackupOptions } from './auto-backup';
 export * from './blocks';
 export { formatDuration } from './commands/projects';
 export * from './palettes';
 export { tokenize, classify, parseRef, type Parsed, type Token } from './parse';
+export * from './auth';
+export * from './totp';

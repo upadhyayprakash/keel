@@ -2,11 +2,13 @@
 //   reference/commands.mdx  from Keel's own command list (`help --json`) plus the examples below
 //   changelog.mdx           from CHANGELOG.md
 //   images, logo, favicon   copied from assets/brand
+//   images/login/*.svg      the login diagrams, drawn by diagrams.ts
 // Run from the repo root: pnpm docs:generate. CI fails if the committed output is stale.
 import { copyFileSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Keel } from '../../packages/core/src/index';
+import { writeDiagrams } from './diagrams';
 
 const site = join(dirname(fileURLToPath(import.meta.url)), '..');
 const repo = join(site, '..');
@@ -33,7 +35,7 @@ const EXAMPLES: Record<string, { examples: string[]; note?: string }> = {
     note: 'Then type one line per item: `> pricing deck to @ravi due:thu` for something you owe, `< design files from @meera due:fri` for something you wait on, anything else is a note. An empty line ends the meeting and asks before saving.',
   },
   ls: { examples: ['ls', 'ls owe', 'ls wait @meera', 'ls overdue +acme', 'ls inbox'] },
-  show: { examples: ['show c12', 'show p3', 'show i5'] },
+  show: { examples: ['show c12', 'show p3', 'show i5', 'show g1'] },
   focus: { examples: ['focus c12 c15', 'focus clear'], note: 'Up to three. Everything else stays visible below the line.' },
   done: { examples: ['done c12'] },
   drop: { examples: ['drop c12', 'drop i5'] },
@@ -57,14 +59,36 @@ const EXAMPLES: Record<string, { examples: string[]; note?: string }> = {
   theme: { examples: ['theme', 'theme light', 'theme auto'] },
   export: { examples: ['export > keel-backup.json', 'export --md > keel.md'] },
   import: { examples: ['import keel-backup.json'], note: 'Only into an empty database, so nothing is ever overwritten.' },
+  goal: {
+    examples: [
+      'goal new "Run 5 km"',
+      'goal new "Read a book" done:"last page" due:+3w obstacle:"tired evenings" plan:"If I am tired, then I will read 2 pages" step:"pick the book" step:"read chapter 1"',
+      'goals',
+      'goals --all',
+      'goal show g1',
+      'goal step done g1 2',
+      'goal done g1',
+      'goal drop g1',
+    ],
+    note: 'Asks what done looks like, the deadline, the time you will give it, what could get in the way and an if-then plan, then one step at a time with when and where it happens and a smaller version for a bad day. Anything given inline is not asked. See [Goals](/guides/goals).',
+  },
   help: { examples: ['help', 'help --json'] },
 };
 
 /** Commands that live in the `keel` program itself rather than the shared command list. */
 const PROGRAM: Array<{ usage: string; summary: string; examples: string[] }> = [
   { usage: 'keel', summary: 'Open the Keel shell: type commands without the keel prefix, with Tab completion and history.', examples: ['keel', 'keel shell'] },
-  { usage: 'keel serve [--port 4242]', summary: 'Open the same terminal in your browser, on this machine only.', examples: ['keel serve'] },
+  {
+    usage: 'keel serve [--port 4242] [--public-url https://<name>] [--host <address> --cert <file> --key <file>]',
+    summary: 'Open the same terminal in your browser. On this machine only, unless you add --public-url (behind an HTTPS tunnel) or --host; both need a passkey login.',
+    examples: ['keel serve', 'keel serve --public-url https://keel.example.ts.net'],
+  },
   { usage: 'keel db | keel db connect <address> | keel db disconnect', summary: 'Show where your data lives, or sync it across devices.', examples: ['keel db', 'keel db connect libsql://keel-<you>.turso.io', 'keel db disconnect'] },
+  {
+    usage: 'keel auth | keel auth passkey add|list|remove | keel auth totp enable [--label <name>]|disable | keel auth sessions [revoke <id>|--all]',
+    summary: 'Pair your phone with a passkey for keel serve --public-url, turn six-digit codes on as a fallback, and see or end sessions.',
+    examples: ['keel auth', 'keel auth passkey add --name "My iPhone"', 'keel auth passkey remove "My iPhone"', 'keel auth totp enable --label "Keel"', 'keel auth sessions revoke --all'],
+  },
   { usage: 'keel completion zsh|bash', summary: 'Print the shell completion script.', examples: ['echo \'eval "$(keel completion zsh)"\' >> ~/.zshrc'] },
   { usage: 'keel --version', summary: 'Print the installed version.', examples: ['keel --version'] },
 ];
@@ -75,6 +99,7 @@ const GROUPS: Array<[string, string[]]> = [
   ['Close the loop', ['done', 'drop', 'renegotiate', 'nudge', 'set']],
   ['Projects and context', ['switch', 'park', 'client', 'project', 'person']],
   ['Weekly', ['triage', 'review', 'summary']],
+  ['Goals', ['goal']],
   ['Data and settings', ['export', 'import', 'theme', 'help']],
 ];
 
@@ -157,4 +182,5 @@ mkdirSync(join(site, 'reference'), { recursive: true });
 writeFileSync(join(site, 'reference', 'commands.mdx'), commandsPage(await commandList()));
 writeFileSync(join(site, 'changelog.mdx'), changelogPage());
 copyAssets();
-console.log('Generated reference/commands.mdx, changelog.mdx and assets.');
+writeDiagrams(site);
+console.log('Generated reference/commands.mdx, changelog.mdx, assets and diagrams.');

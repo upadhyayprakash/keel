@@ -1,0 +1,644 @@
+/* Colors come from @keel/core palettes via CSS variables (see theme.ts). */
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--bg);
+  color: var(--t-default);
+  font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.screen {
+  max-width: 480px;
+  margin: 0 auto;
+  padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom);
+}
+
+.top {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 14px 22px;
+  border-bottom: 1px solid var(--line);
+}
+
+.wordmark {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.wordmark .chev {
+  color: var(--t-accent);
+  font-weight: 700;
+  font-size: 22px;
+}
+
+.wordmark .word {
+  font-family: 'Space Grotesk', system-ui, sans-serif;
+  font-weight: 700;
+  font-size: 22px;
+  letter-spacing: -0.02em;
+}
+
+.label,
+.muted {
+  color: var(--t-muted);
+}
+
+.label {
+  font-size: 12px;
+}
+
+.body {
+  padding: 18px 22px;
+}
+
+.title {
+  margin: 0 0 8px;
+  font-size: 22px;
+  font-weight: 700;
+}
+
+:focus-visible {
+  outline: 2px solid var(--t-accent);
+  outline-offset: 2px;
+}
+
+/* ---- Shared components (ui.tsx). Radii: cards 12px, inputs and buttons 10px, chips 8px (designs/TOKENS.md). ---- */
+
+.top-action {
+  margin-left: auto;
+}
+
+.screen-title {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.screen-title .title {
+  margin: 0;
+}
+
+.sub {
+  margin: 2px 0 0;
+  color: var(--t-muted);
+  font-size: 13px;
+}
+
+.back {
+  min-width: 44px;
+  min-height: 44px;
+  margin: -8px 0 0 -12px;
+  border: 0;
+  background: none;
+  color: var(--t-default);
+  font: inherit;
+  font-size: 20px;
+  cursor: pointer;
+}
+
+.card {
+  margin-bottom: 12px;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel);
+}
+
+.card-wait {
+  border-color: transparent;
+  background: var(--wait-tint);
+  color: var(--t-wait);
+}
+
+.card-open {
+  cursor: pointer;
+}
+
+.card h2 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.progress {
+  margin: 10px 0 4px;
+}
+
+.progress-track {
+  height: 6px;
+  overflow: hidden;
+  border-radius: 3px;
+  background: var(--selection);
+}
+
+.progress-fill {
+  height: 100%;
+  border-radius: 3px;
+  background: var(--t-accent);
+}
+
+.progress-label {
+  margin: 6px 0 0;
+  color: var(--t-muted);
+  font-size: 12px;
+}
+
+.chip {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 8px;
+  font-size: 12px;
+  line-height: 1.6;
+  white-space: nowrap;
+}
+
+.chip-cue {
+  background: var(--selection);
+  color: var(--t-default);
+}
+
+.chip-status {
+  background: var(--accent-tint);
+}
+
+.tone-accent {
+  color: var(--t-accent);
+}
+
+.tone-today {
+  color: var(--t-today);
+}
+
+.tone-wait {
+  color: var(--t-wait);
+}
+
+.tone-late {
+  color: var(--t-late);
+}
+
+.tone-done {
+  color: var(--t-done);
+}
+
+.status-line {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 10px 0 0;
+  font-size: 12px;
+}
+
+.status-line .dot {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+  transform: translateY(-1px);
+}
+
+/* Round check: 44px touch target around a 28px circle. */
+.check {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+
+.check svg {
+  width: 28px;
+  height: 28px;
+  padding: 4px;
+  border: 1.5px solid var(--t-muted);
+  border-radius: 50%;
+  fill: none;
+  stroke: var(--t-muted);
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.check-on svg {
+  border-color: var(--t-done);
+  background: var(--t-done);
+  stroke: var(--bg);
+}
+
+.check:disabled {
+  cursor: default;
+}
+
+.checkbox {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  min-height: 44px;
+  padding: 10px 0;
+  cursor: pointer;
+}
+
+.checkbox input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.checkbox .box {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  margin-top: 1px;
+  border: 1.5px solid var(--t-muted);
+  border-radius: 4px;
+}
+
+.checkbox .box svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: var(--on-accent);
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  visibility: hidden;
+}
+
+.checkbox input:checked + .box {
+  border-color: var(--t-accent);
+  background: var(--t-accent);
+}
+
+.checkbox input:checked + .box svg {
+  visibility: visible;
+}
+
+.checkbox input:focus-visible + .box {
+  outline: 2px solid var(--t-accent);
+  outline-offset: 2px;
+}
+
+.step-bar {
+  display: flex;
+  gap: 8px;
+  margin: 8px 0 20px;
+}
+
+.step-bar span {
+  flex: 1;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--selection);
+}
+
+.step-bar span.on {
+  background: var(--t-accent);
+}
+
+.field,
+.choices {
+  min-width: 0;
+  margin: 0 0 18px;
+  padding: 0;
+  border: 0;
+}
+
+.field-label {
+  display: block;
+  margin-bottom: 6px;
+  padding: 0;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.field-help {
+  margin: -4px 0 6px;
+  color: var(--t-muted);
+  font-size: 12px;
+}
+
+.input {
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--panel);
+  color: var(--t-default);
+  font: inherit;
+  resize: vertical;
+}
+
+.input::placeholder {
+  color: var(--t-dim);
+}
+
+.input:focus {
+  border-color: var(--t-accent);
+  outline: none;
+}
+
+/* The error keeps the field's fill; the border and the line under it carry it (D22). */
+.input-error,
+.input-error:focus {
+  border-color: var(--t-late);
+}
+
+.field-error {
+  margin: 6px 0 0;
+  color: var(--t-late);
+  font-size: 12px;
+}
+
+.choice-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.choice {
+  min-height: 40px;
+  padding: 6px 16px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  color: var(--t-default);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.choice-on {
+  border-color: var(--t-accent);
+  background: var(--t-accent);
+  color: var(--on-accent);
+}
+
+.btn {
+  min-height: 44px;
+  padding: 10px 16px;
+  border-radius: 10px;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.btn-primary {
+  width: 100%;
+  border: 1px solid var(--t-accent);
+  background: var(--t-accent);
+  color: var(--on-accent);
+}
+
+.btn-outline {
+  border: 1px solid var(--line);
+  background: var(--bg);
+  color: var(--t-default);
+  font-weight: 400;
+}
+
+.btn-link {
+  border: 0;
+  background: none;
+  color: var(--t-accent);
+  font-weight: 400;
+  text-decoration: underline;
+}
+
+.btn:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+/* Today card: the next step with its check button on the right. */
+.next {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+
+.next-step {
+  margin: 0 0 6px;
+}
+
+.button-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.gallery-head {
+  margin: 28px 0 10px;
+  color: var(--t-muted);
+  font-size: 12px;
+  font-weight: 400;
+}
+
+/* ---- Screens ---- */
+
+.actions {
+  margin: 20px 0 12px;
+}
+
+/* Screen 03: the plan card, "If ..." then "then I will ...", the error on the second blank. */
+.plan-card {
+  min-width: 0;
+  margin: 0 0 18px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel);
+}
+
+.plan-line {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 10px;
+  margin-top: 8px;
+  font-size: 13px;
+}
+
+.plan-line .input {
+  min-width: 0;
+  background: var(--bg);
+}
+
+.plan-card .field-help,
+.plan-card .field-error {
+  margin: 8px 0 0;
+}
+
+.draft-steps {
+  margin: 0 0 12px;
+  padding: 0;
+  list-style: none;
+}
+
+.draft-steps li {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: start;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+/* Unticked while creating (the drawn screen ticked them by mistake). */
+.draft-steps .box {
+  width: 20px;
+  height: 20px;
+  margin-top: 1px;
+  border: 1.5px solid var(--t-muted);
+  border-radius: 4px;
+}
+
+.draft-steps .field-help {
+  margin: 4px 0 0;
+}
+
+.remove {
+  min-width: 44px;
+  min-height: 44px;
+  margin: -12px -12px -12px 0;
+  border: 0;
+  background: none;
+  color: var(--t-muted);
+  font: inherit;
+  font-size: 18px;
+  cursor: pointer;
+}
+
+/* Not live: the last-seen copy, with a retry (screens 01 and 04). */
+.not-live {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0 12px;
+  margin: -4px 0 14px;
+}
+
+.not-live .status-line {
+  flex: 1 1 220px;
+  margin: 0;
+}
+
+.not-live .btn-link {
+  min-height: 44px;
+  padding: 0 4px;
+}
+
+/* Screen 04: goal detail. */
+.done-means {
+  margin: 0 0 4px;
+  font-size: 13px;
+}
+
+.plan-show {
+  margin-top: 14px;
+}
+
+.plan-show .field-label {
+  margin-bottom: 4px;
+}
+
+.plan-show p {
+  margin: 0;
+  font-size: 13px;
+}
+
+.group-head {
+  margin: 0 0 4px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.step-list,
+.done-list {
+  margin: 0 0 16px;
+  padding: 0;
+  list-style: none;
+}
+
+.step-list li {
+  border-bottom: 1px solid var(--line);
+}
+
+.step-list .checkbox-label {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+.step-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.step-chips:empty {
+  display: none;
+}
+
+.step-list .step-min {
+  margin: 0;
+}
+
+.done-list li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 3px 0;
+  font-size: 13px;
+}
+
+.done-list svg {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  padding: 3px;
+  border-radius: 50%;
+  background: var(--t-done);
+  fill: none;
+  stroke: var(--bg);
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.show-all {
+  margin-top: -12px;
+  padding: 10px 0;
+}
+
+.all-done {
+  margin: 14px 0;
+}

@@ -1,6 +1,7 @@
 import { inbox, owe, wait } from './capture';
 import { done, drop, focus, nudge, renegotiate, set } from './edit';
 import { exportCommand, importCommand } from './backup';
+import { goal } from './goals';
 import { helpCommand, theme } from './misc';
 import { meeting } from './meeting';
 import { client, person, project } from './manage';
@@ -30,6 +31,7 @@ list.push(
   renegotiate,
   nudge,
   set,
+  goal,
   switchCommand,
   park,
   triage,
@@ -47,7 +49,7 @@ list.push(
 export const commands: readonly Command[] = list;
 
 /** Shortcuts that expand to a full command line. */
-const EXPANSIONS: Record<string, string> = { clients: 'client ls', projects: 'project ls', people: 'person ls', inbox: 'ls inbox' };
+const EXPANSIONS: Record<string, string> = { clients: 'client ls', projects: 'project ls', people: 'person ls', inbox: 'ls inbox', goals: 'goal ls' };
 
 export function expand(name: string): string | undefined {
   return EXPANSIONS[name];

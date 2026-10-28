@@ -1,0 +1,134 @@
+---
+title: "How login works"
+description: "What happens behind each tap: the three ways to run keel serve, pairing, passkey and code sign-in, sessions, and how to end them."
+---
+
+This page explains what Keel does at each step of [using it from your phone](/guides/phone-login), in plain words and pictures. You don't need it to use Keel; it's here for when you want to know why something works the way it does.
+
+## Three ways to run keel serve
+
+<Frame>
+  <img className="block dark:hidden" src="/images/login/modes-light.svg" alt="Three ways to run keel serve: only this computer with login off, through a tunnel with login on, or on your own network with login on" />
+  <img className="hidden dark:block" src="/images/login/modes-dark.svg" alt="Three ways to run keel serve: only this computer with login off, through a tunnel with login on, or on your own network with login on" />
+</Frame>
+
+- **`keel serve`** listens only on your own computer (`127.0.0.1`). Nothing else can reach it, so there is no login. This is how Keel has always worked.
+- **`keel serve --public-url https://<name>`** is for a tunnel in front of Keel. Login turns on for every request, even from your own computer, because the tunnel makes the same port reachable from the internet.
+- **`keel serve --host 0.0.0.0`** listens on your network. Keel refuses to start until there is HTTPS (`--cert` and `--key`, or `--public-url`) and at least one login (a passkey or codes).
+
+## The parts
+
+<Frame>
+  <img className="block dark:hidden" src="/images/login/overview-light.svg" alt="Your phone reaches keel serve through an HTTPS tunnel; logins live in ~/.keel/auth and the Keychain; your terminal adds and removes them" />
+  <img className="hidden dark:block" src="/images/login/overview-dark.svg" alt="Your phone reaches keel serve through an HTTPS tunnel; logins live in ~/.keel/auth and the Keychain; your terminal adds and removes them" />
+</Frame>
+
+| What | Where | What's in it |
+|---|---|---|
+| Passkeys | `~/.keel/auth/passkeys.json` | Each phone's **public** key, its name, the address it belongs to, when it was last used. No secrets. |
+| Sessions | `~/.keel/auth/sessions.json` | Who is signed in, for what, until when. Only a hash of each cookie, never the cookie itself. |
+| Pairing links | `~/.keel/auth/pairings.json` | Only a hash of each one-time link. |
+| Codes on or off | `~/.keel/auth/totp.json` | When codes were turned on, and the last code used. |
+| The code key | macOS Keychain or the Linux keyring | The secret your authenticator app also has. |
+
+The folder and its files can only be read by you. None of it is synced to other devices: a passkey belongs to one computer's address.
+
+<Tip>
+The phone can only **sign in**. Adding a phone, removing one, turning codes on or off, and ending sessions all happen in your own terminal with `keel auth`. Someone who gets hold of the browser can't add a login of their own.
+</Tip>
+
+## Pairing a phone
+
+<Frame>
+  <img className="block dark:hidden" src="/images/login/pairing-light.svg" alt="Pairing: the terminal makes a one-time link as a QR code, the phone opens it, makes a passkey with Face ID and sends its public key, and keel serve saves it" />
+  <img className="hidden dark:block" src="/images/login/pairing-dark.svg" alt="Pairing: the terminal makes a one-time link as a QR code, the phone opens it, makes a passkey with Face ID and sends its public key, and keel serve saves it" />
+</Frame>
+
+- The link's secret sits after the `#` in the address, so it is never sent in a request. The tunnel and any logs never see it, and the page removes it from the address bar.
+- The link works once and for 10 minutes. Pressing Ctrl+C in the terminal cancels it at once.
+- Face ID makes a new **key pair** on the phone. The private half never leaves the phone; Keel only stores the public half, which can check signatures but can't make them.
+- Pairing also signs the phone in to Goals, so it's ready to use.
+
+## Signing in with a passkey
+
+<Frame>
+  <img className="block dark:hidden" src="/images/login/sign-in-light.svg" alt="Sign-in: keel serve sends a one-time challenge, Face ID signs it, keel serve checks the signature with the saved public key and sets a session cookie" />
+  <img className="hidden dark:block" src="/images/login/sign-in-dark.svg" alt="Sign-in: keel serve sends a one-time challenge, Face ID signs it, keel serve checks the signature with the saved public key and sets a session cookie" />
+</Frame>
+
+- Each challenge is random, works once and lasts 5 minutes, so a recorded sign-in can't be replayed.
+- The phone only offers the passkey at the address it was made for. A look-alike site gets nothing, which is why passkeys can't be phished.
+- Keel checks that Face ID (or the screen lock) was used, not just that the phone was unlocked.
+- After 10 failed attempts in a minute, Keel answers "Too many tries" until the minute is up.
+
+## Codes from an authenticator app
+
+Codes are optional. They help in a browser without passkeys, and at local addresses (`localhost`, `192.168.x.x`) where passkeys can't work.
+
+<Frame caption="Turning codes on, in your terminal">
+  <img className="block dark:hidden" src="/images/login/codes-setup-light.svg" alt="keel auth totp enable makes a key, the authenticator app reads it from a QR code, you type a code to confirm, and the key is saved in the Keychain" />
+  <img className="hidden dark:block" src="/images/login/codes-setup-dark.svg" alt="keel auth totp enable makes a key, the authenticator app reads it from a QR code, you type a code to confirm, and the key is saved in the Keychain" />
+</Frame>
+
+<Frame caption="Signing in with a code">
+  <img className="block dark:hidden" src="/images/login/codes-sign-in-light.svg" alt="You type the code from the app, keel serve checks it against the key, refuses used codes and slows down after five wrong ones, and sets a 12-hour session" />
+  <img className="hidden dark:block" src="/images/login/codes-sign-in-dark.svg" alt="You type the code from the app, keel serve checks it against the key, refuses used codes and slows down after five wrong ones, and sets a 12-hour session" />
+</Frame>
+
+- Your app and Keel share one secret key and the clock. Every 30 seconds both work out the same six digits; nothing is sent between them.
+- A code is accepted for 30 seconds either side of its time, in case the phone's clock is a little off.
+- Each code works once, even if Keel restarts in between.
+- A code sign-in always lasts 12 hours, also for Goals, because a code is easier to copy than a passkey.
+- Running `keel serve` reads the key from the Keychain at each code sign-in, so turning codes on needs no restart.
+
+## Every request
+
+<Frame>
+  <img className="block dark:hidden" src="/images/login/requests-light.svg" alt="A request is answered straight away without login; with login on, pages and sign-in calls are answered, other calls need a live session cookie or get 401 Sign in first" />
+  <img className="hidden dark:block" src="/images/login/requests-dark.svg" alt="A request is answered straight away without login; with login on, pages and sign-in calls are answered, other calls need a live session cookie or get 401 Sign in first" />
+</Frame>
+
+- The page itself always loads, so you can see the sign-in screen. Your data only comes through the API, which needs a session.
+- The session lives in a cookie the page's scripts can't read (`HttpOnly`), that is only sent over HTTPS (`Secure`), and that other sites can't use to send commands.
+- A browser terminal session also opens Goals, but not the other way round.
+- Opening Goals without a session takes you to the sign-in page, and back to the same Goals page afterwards. So does a session that ends while Goals is open.
+
+## How long a sign-in lasts
+
+<Frame>
+  <img className="block dark:hidden" src="/images/login/sessions-light.svg" alt="Browser terminal passkey sessions and any code sign-in last 12 hours; a Goals passkey session lasts 30 days and renews while you use it" />
+  <img className="hidden dark:block" src="/images/login/sessions-dark.svg" alt="Browser terminal passkey sessions and any code sign-in last 12 hours; a Goals passkey session lasts 30 days and renews while you use it" />
+</Frame>
+
+The browser terminal can run every command, so it asks again twice a day. Goals only shows your goals, so it stays signed in for 30 days while you use it.
+
+## The right address
+
+<Frame>
+  <img className="block dark:hidden" src="/images/login/addresses-light.svg" alt="At the public-url address passkeys and codes work; at localhost or a LAN address only codes work" />
+  <img className="hidden dark:block" src="/images/login/addresses-dark.svg" alt="At the public-url address passkeys and codes work; at localhost or a LAN address only codes work" />
+</Frame>
+
+A passkey is tied to the name it was made for. Opened at another address, the sign-in page says where passkeys work and links there, or shows the code box when codes are on.
+
+## Ending access
+
+<Frame>
+  <img className="block dark:hidden" src="/images/login/ending-light.svg" alt="What each command ends: passkey remove ends that phone's sessions and stops the passkey; sessions revoke --all ends all sessions; totp disable ends code sessions and stops codes; sign out ends this browser's sessions" />
+  <img className="hidden dark:block" src="/images/login/ending-dark.svg" alt="What each command ends: passkey remove ends that phone's sessions and stops the passkey; sessions revoke --all ends all sessions; totp disable ends code sessions and stops codes; sign out ends this browser's sessions" />
+</Frame>
+
+An ended session stops working at once. A page that is already open finds out on its next command and shows **Your session ended**.
+
+Removing a passkey only ends the sessions *that passkey* started. A browser that signed in with a code stays signed in, which is why the lost-phone steps also end every session:
+
+<Frame>
+  <img className="block dark:hidden" src="/images/login/lost-phone-light.svg" alt="Lost phone: remove its passkey, end every session, pair the new phone" />
+  <img className="hidden dark:block" src="/images/login/lost-phone-dark.svg" alt="Lost phone: remove its passkey, end every session, pair the new phone" />
+</Frame>
+
+## What login doesn't protect
+
+Login keeps other people out of `keel serve`. It doesn't encrypt your data on the disk: anyone who can use your unlocked computer can read Keel's files, as before. Lock your computer, and keep your tunnel name to yourself.
+
+For the full reasoning, see [ADR 0002](https://github.com/upadhyayprakash/keel/blob/main/docs/adr/0002-authentication-and-encryption.md) in the repository.

@@ -106,7 +106,7 @@ export async function runShell(keel: Keel, o: ShellOptions): Promise<number> {
       process.stdout.write('\x1b[2J\x1b[H');
       continue;
     }
-    if (/^(serve|shell|completion|db)\b/.test(input)) {
+    if (/^(serve|shell|completion|db|auth)\b/.test(input)) {
       write(muted(`${input.split(' ')[0]} runs outside the shell. Use it from your terminal: keel ${input}`));
       write('');
       continue;

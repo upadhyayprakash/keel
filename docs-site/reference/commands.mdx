@@ -122,13 +122,14 @@ ls inbox
 Details and history of one item.
 
 ```text Usage
-show <c42|p7|i3>
+show <c42|p7|i3|g1>
 ```
 
 ```bash Examples
 show c12
 show p3
 show i5
+show g1
 ```
 
 ## Close the loop
@@ -324,6 +325,29 @@ summary day
 summary last +acme
 ```
 
+## Goals
+
+### goal
+
+Set one small goal with steps and an if-then plan, then finish it. Asks questions as it goes.
+
+```text Usage
+goal new "<name>" [done:"..."] [due:<when>] [time:"..."] [obstacle:"..."] [plan:"If ..., then I will ..."] [step:"..."] | goals [--all] | goal show|done|drop <g1> | goal step done <g1> <n>
+```
+
+Asks what done looks like, the deadline, the time you will give it, what could get in the way and an if-then plan, then one step at a time with when and where it happens and a smaller version for a bad day. Anything given inline is not asked. See [Goals](/guides/goals).
+
+```bash Examples
+goal new "Run 5 km"
+goal new "Read a book" done:"last page" due:+3w obstacle:"tired evenings" plan:"If I am tired, then I will read 2 pages" step:"pick the book" step:"read chapter 1"
+goals
+goals --all
+goal show g1
+goal step done g1 2
+goal done g1
+goal drop g1
+```
+
 ## Data and settings
 
 ### export
@@ -399,14 +423,15 @@ keel shell
 
 ### keel serve
 
-Open the same terminal in your browser, on this machine only.
+Open the same terminal in your browser. On this machine only, unless you add --public-url (behind an HTTPS tunnel) or --host; both need a passkey login.
 
 ```text Usage
-keel serve [--port 4242]
+keel serve [--port 4242] [--public-url https://<name>] [--host <address> --cert <file> --key <file>]
 ```
 
 ```bash Examples
 keel serve
+keel serve --public-url https://keel.example.ts.net
 ```
 
 ### keel db
@@ -421,6 +446,22 @@ keel db | keel db connect <address> | keel db disconnect
 keel db
 keel db connect libsql://keel-<you>.turso.io
 keel db disconnect
+```
+
+### keel auth
+
+Pair your phone with a passkey for keel serve --public-url, turn six-digit codes on as a fallback, and see or end sessions.
+
+```text Usage
+keel auth | keel auth passkey add|list|remove | keel auth totp enable [--label <name>]|disable | keel auth sessions [revoke <id>|--all]
+```
+
+```bash Examples
+keel auth
+keel auth passkey add --name "My iPhone"
+keel auth passkey remove "My iPhone"
+keel auth totp enable --label "Keel"
+keel auth sessions revoke --all
 ```
 
 ### keel completion

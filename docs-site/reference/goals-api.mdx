@@ -1,0 +1,45 @@
+---
+title: "Goals API"
+description: "The HTTP routes the Goals phone app uses, served by keel serve."
+---
+
+The Goals app at `/goals` talks to Keel only through these routes, so the same rules apply on the phone, in the CLI and in the browser terminal. A goal in a response has the same fields as `goal show g1 --json` (see [JSON output](/reference/json)).
+
+With a login set up ([phone login](/guides/phone-login)), every route needs a Goals session or a terminal session. Without one the answer is `401` with `{ "error": "Sign in first.", "signIn": "goals" }`.
+
+| Route | Does |
+|---|---|
+| `GET /api/goals` | Active goals, nearest deadline first, as `{ today, goals }`. `today` is the server's date. Add `?all=1` for closed goals too |
+| `GET /api/goals/g1` | One goal with its steps |
+| `POST /api/goals` | Creates a goal. Answers `201` with the goal |
+| `POST /api/goals/g1/steps/2/done` | Marks step 2 done. Answers with the goal |
+
+## Creating a goal
+
+```json
+{
+  "title": "Run 5 km",
+  "doneMeans": "I run 5 km in one go",
+  "dueOn": "2026-11-08",
+  "appetite": "3 runs a week",
+  "obstacle": "rainy mornings",
+  "plan": "If it is raining at 7:00, then I will use the treadmill",
+  "steps": [
+    { "text": "Run 1 km", "cueAt": "2026-10-17T07:00", "cuePlace": "the park", "minimum": "10 minutes" },
+    { "text": "Run 3 km" }
+  ]
+}
+```
+
+`dueOn` is a day (`YYYY-MM-DD`) and `cueAt` a local time (`YYYY-MM-DDTHH:MM`). `appetite`, `obstacle` and each step's `cueAt`, `cuePlace` and `minimum` are optional. The first step is the first one in the list, unless one has `"firstStep": true`. Send it with `content-type: application/json`.
+
+## Errors
+
+Every error has the same shape: `{ "error", "hint", "field" }`. `field` names the input it is about (`title`, `doneMeans`, `dueOn`, `plan`, `steps`), or is `null`.
+
+| Status | When |
+|---|---|
+| `400` | Something to fix in the request, such as a plan that doesn't read "If ..., then ..." |
+| `404` | No such goal, or no such step |
+| `409` | Someone got there first: the step was already done, or the goal is closed. `error` says when |
+| `415` | The body isn't JSON |
