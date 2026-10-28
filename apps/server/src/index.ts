@@ -6,6 +6,7 @@ import { serve } from '@hono/node-server';
 import { Hono, type Context } from 'hono';
 import { parsePublicUrl, type Keel } from '@keel/core';
 import { authRoutes, requireSession, type AuthOptions } from './auth';
+import { goalRoutes } from './goals';
 
 export { checkServe, COOKIES } from './auth';
 export type { AuthOptions } from './auth';
@@ -70,7 +71,8 @@ export function createApp({ keel, port, webDist = defaultDist('web'), goalsDist 
     const terminal = requireSession(auth.store, 'terminal');
     app.use('/api/*', (c, next) => {
       if (c.req.path.startsWith('/api/auth/')) return next();
-      return c.req.path.startsWith('/api/goals/') ? goals(c, next) : terminal(c, next);
+      const goalsRoute = c.req.path === '/api/goals' || c.req.path.startsWith('/api/goals/');
+      return goalsRoute ? goals(c, next) : terminal(c, next);
     });
   }
 
@@ -91,6 +93,8 @@ export function createApp({ keel, port, webDist = defaultDist('web'), goalsDist 
   });
 
   app.get('/api/state', async (c) => c.json(await keel.state()));
+
+  goalRoutes(app, keel);
   app.get('/api/complete', async (c) => c.json(await keel.complete(c.req.query('line') ?? '')));
 
   // A built app's files, or its index.html for any other path inside it (client-side routes).

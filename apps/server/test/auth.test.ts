@@ -90,6 +90,19 @@ describe('with login on', () => {
   });
 });
 
+describe('goals API with login on', () => {
+  it('needs a Goals session, and a Goals session reaches only the Goals routes', async () => {
+    expect(await (await client().request('/api/goals')).json()).toEqual({ error: 'Sign in first.', signIn: 'goals' });
+    expect((await client().request('/api/goals/g1')).status).toBe(401);
+    const browser = await pairPhone();
+    const list = await browser.request('/api/goals');
+    expect(list.status).toBe(200);
+    expect(await list.json()).toMatchObject({ goals: [] });
+    expect((await browser.request('/api/goals/g1')).status).toBe(404);
+    expect((await runToday(browser)).status).toBe(401);
+  });
+});
+
 describe('pairing', () => {
   it('adds the passkey and signs the phone in to Goals, not the terminal', async () => {
     const browser = await pairPhone();

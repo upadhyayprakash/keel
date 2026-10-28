@@ -61,7 +61,7 @@
       },
       {
         "group": "Reference",
-        "pages": ["reference/commands", "reference/syntax", "reference/json", "reference/environment"]
+        "pages": ["reference/commands", "reference/syntax", "reference/json", "reference/goals-api", "reference/environment"]
       },
       {
         "group": "Project",

@@ -191,7 +191,7 @@ export class Keel {
       }
     } catch (e) {
       if (!(e instanceof KeelError)) throw e;
-      return print({ ok: false, error: e.message, hint: e.hint ?? null }, true);
+      return print({ ok: false, error: e.message, hint: e.hint || null }, true);
     }
     const last = [...blocks].reverse().find((b) => b.kind === 'data');
     return print({ ok: true, data: last?.kind === 'data' ? last.value : null, text: renderText(blocks) });
