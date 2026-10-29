@@ -1,17 +1,19 @@
 import { eq } from 'drizzle-orm';
 import { blank, fail, heading, hint, line, ok, s, table, warn, type Block, type Question } from '../blocks';
 import { addDays, dayDiff, formatDay, weekStart } from '../dates';
+import { goalRef, listGoals } from '../goals';
 import * as t from '../db/schema';
 import { KeelError } from '../errors';
 import { classify, tokenize } from '../parse';
 import type { CommitmentView, Store } from '../store';
 import { done, drop, nudge, renegotiate, set } from './edit';
+import { closeBlocks, goalRow, nextStepLine, stepsDoneIn } from './goals';
 import { askNote, saveNote } from './projects';
 import { commitmentRow, projectSpan, type Command } from './shared';
 import { summaryBlocks } from './summary';
 import { triageFlow } from './triage';
 
-const STEPS = ['Inbox to zero', 'Overdue: decide each', 'Waiting on', 'Projects and resume notes', 'Next week per client', 'Week summary'];
+const STEPS = ['Inbox to zero', 'Overdue: decide each', 'Waiting on', 'Goals', 'Projects and resume notes', 'Next week per client', 'Week summary'];
 
 /** The week whose priorities a review sets: next week when run Friday to Sunday. */
 export const priorityWeek = (today: string) => weekStart(addDays(today, 3));
@@ -89,8 +91,34 @@ export const review: Command = {
       }
     }
 
-    // 4. Projects and their resume notes
+    // 4. Goals: how each one went this week, then keep going, close or drop it (ADR 0004).
     step(4);
+    const goals = await listGoals(k, 'active');
+    if (goals.length === 0) pending.push(hint('No active goals. Start one with: goal new "Run 5 km"'));
+    for (const g of goals) {
+      const thisWeek = stepsDoneIn(g, weekStart(day), day);
+      pending.push(table([goalRow(g, day, [s(`${thisWeek} done this week`, thisWeek ? 'done' : 'muted')])]), nextStepLine(g, day));
+      for (;;) {
+        const verb = (yield ask({ prompt: 'Still on track?', hint: 'ok · done · drop · skip' })).trim().toLowerCase();
+        if (verb === '' || verb === 'ok' || verb === 's' || verb === 'skip') break;
+        const outcome = verb === 'd' || verb === 'done' ? 'done' : verb === 'x' || verb === 'drop' ? 'dropped' : null;
+        if (!outcome) {
+          pending.push(fail(`"${verb}" isn't an option.`));
+          continue;
+        }
+        // Closed on another device meanwhile: say so and move on (first close wins, ADR 0003).
+        try {
+          pending.push(...(await closeBlocks(k, goalRef(g.goal), outcome)));
+        } catch (e) {
+          if (!(e instanceof KeelError)) throw e;
+          pending.push(fail(e.message), ...(e.hint ? [hint(e.hint)] : []));
+        }
+        break;
+      }
+    }
+
+    // 5. Projects and their resume notes
+    step(5);
     const projects = (await k.listProjects()).filter((pv) => pv.project.status === 'active');
     if (projects.length === 0) pending.push(hint('No active projects.'));
     for (const pv of projects) {
@@ -124,8 +152,8 @@ export const review: Command = {
       }
     }
 
-    // 5. Next week's priority per client
-    step(5);
+    // 6. Next week's priority per client
+    step(6);
     const week = priorityWeek(day);
     const clients = (await k.listClients()).filter((c) => projects.some((pv) => pv.client.id === c.id));
     const priorities: Record<string, string> = JSON.parse((await k.getSetting(`priorities:${week}`)) ?? '{}');
@@ -138,8 +166,8 @@ export const review: Command = {
       if (answer) priorities[c.slug] = answer;
     }
 
-    // 6. Summary
-    step(6);
+    // 7. Summary
+    step(7);
     await k.batch([
       k.setSetting(`priorities:${week}`, JSON.stringify(priorities)),
       k.setSetting('lastReviewAt', k.iso()),

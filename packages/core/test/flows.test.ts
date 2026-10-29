@@ -143,7 +143,7 @@ describe('summary and review', () => {
       '', // northwind priority
     ]);
     expect(questions.filter((q) => q === 'Decide')).toHaveLength(2);
-    expect(text).toContain('STEP 6 OF 6');
+    expect(text).toContain('STEP 7 OF 7');
     expect(text).toContain('renegotiated to Mon 19 Oct');
     expect(text).toContain('Review done');
     expect(await run('projects')).toContain('paused');

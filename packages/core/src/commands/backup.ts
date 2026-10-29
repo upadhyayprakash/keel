@@ -7,10 +7,12 @@ import { weekStart } from '../dates';
 import { whoName } from '../self';
 import * as t from '../db/schema';
 import { KeelError } from '../errors';
+import { goalRef, listGoals } from '../goals';
 import type { CommitmentView, Store } from '../store';
 import type { Command } from './shared';
 
-const EXPORT_VERSION = 1;
+/** 2 added goals and their steps (ADR 0004). Version 1 files still import; an older Keel refuses version 2 instead of dropping goals. */
+const EXPORT_VERSION = 2;
 
 // Export keys, in insert order for import: parents before the rows that point at them.
 const TABLES = {
@@ -22,6 +24,8 @@ const TABLES = {
   inboxItems: t.inboxItems,
   focus: t.focus,
   contextLog: t.contextLog,
+  goals: t.goals,
+  goalSteps: t.goalSteps,
   events: t.events,
   settings: t.settings,
 } as const;
@@ -79,6 +83,7 @@ export const importCommand: Command = {
             label(counts.commitments, 'commitment'),
             label(counts.inboxItems, 'inbox item'),
             label(counts.resumeNotes, 'resume note'),
+            ...(counts.goals ? [label(counts.goals, 'goal')] : []),
           ].join(', '),
           'default',
           { bold: true },
@@ -92,7 +97,7 @@ export const importCommand: Command = {
 export type ExportCounts = Partial<Record<TableName, number>>;
 
 /** Rows that make a database "have data" (settings alone don't count). */
-const CONTENT = ['clients', 'projects', 'people', 'commitments', 'inboxItems', 'resumeNotes'] as const;
+const CONTENT = ['clients', 'projects', 'people', 'commitments', 'inboxItems', 'resumeNotes', 'goals', 'goalSteps'] as const;
 
 /** How many live rows each content table holds. */
 export async function contentCounts(k: Store): Promise<Record<(typeof CONTENT)[number], number>> {
@@ -157,8 +162,8 @@ export function parseExport(text: string): Partial<Record<TableName, Row[]>> {
   if (dump?.app !== 'keel' || !dump.data || typeof dump.data !== 'object') {
     throw new KeelError("That isn't a Keel export.", 'Use a file made by: keel export > backup.json');
   }
-  if (dump.version !== EXPORT_VERSION) {
-    throw new KeelError(`This Keel reads export version ${EXPORT_VERSION}, and the file is version ${String(dump.version)}.`, 'Update Keel and try again.');
+  if (typeof dump.version !== 'number' || dump.version < 1 || dump.version > EXPORT_VERSION) {
+    throw new KeelError(`This Keel reads export versions 1 to ${EXPORT_VERSION}, and the file is version ${String(dump.version)}.`, 'Update Keel and try again.');
   }
   const tables = dump.data as Record<string, unknown>;
   for (const name of Object.keys(TABLES)) {
@@ -220,6 +225,27 @@ async function markdown(k: Store): Promise<string> {
   if (loose.length) {
     out.push('', '## No project');
     commitments(loose);
+  }
+
+  const goals = await listGoals(k);
+  if (goals.length) {
+    out.push('', '## Goals');
+    for (const { goal, steps } of goals) {
+      out.push(
+        '',
+        `### ${goalRef(goal)} ${goal.title} · due ${goal.dueOn} · ${goal.status === 'active' ? 'active' : `${goal.status} ${goal.closedAt?.slice(0, 10) ?? ''}`.trim()}`,
+        '',
+        `- Done means: ${goal.doneMeans}`,
+        ...(goal.appetite ? [`- Time: ${goal.appetite}`] : []),
+        ...(goal.obstacle ? [`- Obstacle: ${goal.obstacle}`] : []),
+        `- Plan: ${goal.plan}`,
+        '',
+        ...steps.map((st) => {
+          const bits = [st.cueAt?.replace('T', ' '), st.cuePlace, st.minimum ? `or ${st.minimum}` : null].filter(Boolean);
+          return `${st.position}. [${st.status === 'done' ? 'x' : ' '}] ${st.text}${bits.length ? ` · ${bits.join(' · ')}` : ''}`;
+        }),
+      );
+    }
   }
 
   const projectPaths = new Map(projects.map((pv) => [pv.project.id, pv.path]));

@@ -1,5 +1,5 @@
 import { blank, data, fail, heading, hint, line, ok, s, table, warn, type Block, type Question, type Span } from '../blocks';
-import { describeDue, formatDay, parseCue, parseDue } from '../dates';
+import { describeDue, formatDay, parseCue, parseDue, ymd } from '../dates';
 import { KeelError } from '../errors';
 import { checkGoalFields, closeGoal, completeStep, createGoal, findGoal, goalRef, listGoals, progressLabel, type GoalStep, type GoalView, type NewStep } from '../goals';
 import type { Parsed } from '../parse';
@@ -250,7 +250,7 @@ export async function showGoal(k: Store, ref: string): Promise<Block[]> {
 
 // ---- goal done, goal drop, goal step done ----
 
-async function closeBlocks(k: Store, ref: string, outcome: 'done' | 'dropped'): Promise<Block[]> {
+export async function closeBlocks(k: Store, ref: string, outcome: 'done' | 'dropped'): Promise<Block[]> {
   const view = await closeGoal(k, ref, outcome);
   const open = view.steps.filter((st) => st.status === 'open').length;
   const r = goalRef(view.goal);
@@ -276,3 +276,26 @@ async function stepDone(k: Store, p: Parsed): Promise<Block[]> {
     data(goalData(view)),
   ];
 }
+
+// ---- goals in today, review and the summary ----
+
+/** A goal on one line: ref, title, then `extra`, progress and the deadline. */
+export function goalRow(view: GoalView, today: string, extra: Span[] = []): Span[] {
+  const ref = goalRef(view.goal);
+  return [s(ref, 'muted', { ref }), s(view.goal.title), ...extra, s(progressLabel(view.steps), 'muted'), dueSpan(view, today)];
+}
+
+/** "next: Run 2 km at the park · today 7:00 · park", under a goal's row. The cue is in `today` tone on its day, `late` once it has passed. */
+export function nextStepLine(view: GoalView, today: string): Block {
+  const next = view.steps.find((st) => st.status === 'open');
+  if (!next) return line([s('all steps done · close it with ', 'muted'), s(`goal done ${goalRef(view.goal)}`, 'accent')], 6);
+  const day = next.cueAt?.slice(0, 10);
+  const when = day ? `${day === today ? 'today' : day < today ? formatDay(day, today) : describeDue(day, today).text} ${next.cueAt!.slice(11)}` : null;
+  const cue = [when, next.cuePlace].filter(Boolean).join(' · ');
+  const tone = !day ? 'muted' : day === today ? 'today' : day < today ? 'late' : 'muted';
+  return line([s('next: ', 'muted'), s(next.text), ...(cue ? [s(` · ${cue}`, tone)] : [])], 6);
+}
+
+/** Steps marked done from `from` to `to`, by local day. */
+export const stepsDoneIn = (view: GoalView, from: string, to: string) =>
+  view.steps.filter((st) => st.doneAt && ymd(new Date(st.doneAt)) >= from && ymd(new Date(st.doneAt)) <= to).length;

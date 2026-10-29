@@ -46,12 +46,12 @@ Every command accepts `--json` and prints exactly one JSON object.
 |---|---|
 | `owe`, `wait`, `done`, `drop`, `renegotiate`, `nudge`, `set c12` | The commitment |
 | `ls` | `{ commitments: [...] }`, or `{ inbox: [...] }` for `ls inbox` |
-| `today` | Date, project you're working on, focus, due and late, follow-ups, coming up, going quiet |
+| `today` | Date, project you're working on, focus, due and late, follow-ups, coming up, going quiet, and `goals` (active goals, left out of a `+client` view) |
 | `show c12` | The commitment with its `history` |
 | `show p3` | The project with its resume note and open commitments |
 | `goal new`, `goal show g1`, `goal step done`, `goal done`, `goal drop` | The goal with its `steps` and `progress` (`done`, `total`, and a `label` like "1 of 4 done") |
 | `goals` | `{ goals: [...] }`, active ones unless you add `--all` |
-| `summary` | Kept, renegotiated, slipped, kept rate, minutes per client |
+| `summary` | Kept, renegotiated, slipped, kept rate, minutes per client, and `goals` with the steps done in the period (`stepsDone`) |
 | `help` | Every command with its usage and summary |
 
 ## Rules for scripts

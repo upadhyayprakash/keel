@@ -6,8 +6,9 @@ import * as t from '../db/schema';
 import { KeelError } from '../errors';
 import { parseRef } from '../parse';
 import type { CommitmentView, Store } from '../store';
-import { showGoal } from './goals';
-import { commitmentData, commitmentRow, inboxData, matchesScope, noteData, projectData, projectSpan, type Command } from './shared';
+import { listGoals } from '../goals';
+import { goalRow, nextStepLine, showGoal } from './goals';
+import { commitmentData, commitmentRow, goalData, inboxData, matchesScope, noteData, projectData, projectSpan, type Command } from './shared';
 
 const STALE_DAYS = 7;
 
@@ -63,6 +64,13 @@ export const today: Command = {
     section('WAITING ON · FOLLOW UP', 'wait', dueWait);
     section('COMING UP · NEXT 3 DAYS', 'muted', soon);
 
+    // Goals are personal, not a client's: a +client view leaves them out (ADR 0004).
+    const goals = scope ? [] : await listGoals(k, 'active');
+    if (goals.length) {
+      out.push(blank(), heading('GOALS', 'accent'));
+      for (const g of goals) out.push(table([goalRow(g, day)]), nextStepLine(g, day));
+    }
+
     const quiet = await quietProjects(k, open, scope);
     if (quiet.length) {
       out.push(blank(), heading('GOING QUIET'), table(quiet.map((q) => q.row)));
@@ -102,6 +110,7 @@ export const today: Command = {
         waitingFollowUp: dueWait.map(commitmentData),
         comingUp: soon.map(commitmentData),
         goingQuiet: quiet.map((q) => q.data),
+        goals: goals.map(goalData),
       }),
     );
     return out;
