@@ -69,8 +69,9 @@ const EXAMPLES: Record<string, { examples: string[]; note?: string }> = {
       'goal step done g1 2',
       'goal done g1',
       'goal drop g1',
+      'goal drop g1 happened:"lost interest" why:"it was not my goal" change:"pick one I want"',
     ],
-    note: 'Asks what done looks like, the deadline, the time you will give it, what could get in the way and an if-then plan, then one step at a time with when and where it happens and a smaller version for a bad day. Anything given inline is not asked. See [Goals](/guides/goals).',
+    note: 'Asks what done looks like, the deadline, the time you will give it, what could get in the way and an if-then plan, then one step at a time with when and where it happens and a smaller version for a bad day. Anything given inline is not asked. When past goals ran late, it offers a padded deadline. `goal done` and `goal drop` ask three review questions (or take `happened:`, `why:` and `change:`). See [Goals](/guides/goals).',
   },
   help: { examples: ['help', 'help --json'] },
 };

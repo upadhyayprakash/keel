@@ -1,7 +1,7 @@
-import { and, asc, eq, inArray, isNull, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, gt, inArray, isNull, sql } from 'drizzle-orm';
 import * as t from './db/schema';
 import { Conflict, KeelError, NotFound } from './errors';
-import { formatStamp } from './dates';
+import { addDays, dayDiff, formatStamp, ymd } from './dates';
 import type { Store } from './store';
 
 // ADR 0004: the goal model. Status changes follow ADR 0003: the first close wins
@@ -11,6 +11,7 @@ import type { Store } from './store';
 export type Goal = typeof t.goals.$inferSelect;
 export type GoalStep = typeof t.goalSteps.$inferSelect;
 export type GoalStatus = Goal['status'];
+export type GoalReview = typeof t.goalReviews.$inferSelect;
 
 export interface GoalView {
   goal: Goal;
@@ -237,8 +238,33 @@ export async function completeStep(k: Store, ref: string, position: number): Pro
   return findGoal(k, view.goal.id);
 }
 
-/** Closes a goal as done or dropped. The first close wins. */
-export async function closeGoal(k: Store, ref: string, outcome: 'done' | 'dropped'): Promise<GoalView> {
+/** The three review questions. Each one may be left empty. */
+export interface ReviewAnswers {
+  /** What happened, against the plan. */
+  happened?: string | null;
+  why?: string | null;
+  /** What to change next time. */
+  change?: string | null;
+}
+
+/** Days from the goal's start to its deadline, and to `closedOn` (today for an open goal). */
+export function planVsTook(goal: Pick<Goal, 'createdAt' | 'dueOn'>, closedOn: string): { plannedDays: number; tookDays: number } {
+  const start = ymd(new Date(goal.createdAt));
+  return { plannedDays: Math.max(0, dayDiff(start, goal.dueOn)), tookDays: Math.max(0, dayDiff(start, closedOn)) };
+}
+
+/** Refuses a goal that is already closed, before any review question is asked. */
+export async function openGoal(k: Store, ref: string): Promise<GoalView> {
+  const view = await findGoal(k, ref);
+  refuseClosedGoal(view.goal, k.today());
+  return view;
+}
+
+/**
+ * Closes a goal as done or dropped and writes its review in the same batch. The
+ * first close wins: a goal closed elsewhere is refused and no review is saved.
+ */
+export async function closeGoal(k: Store, ref: string, outcome: 'done' | 'dropped', answers: ReviewAnswers = {}): Promise<GoalView> {
   const { goal } = await findGoal(k, ref);
   refuseClosedGoal(goal, k.today());
   const at = k.iso();
@@ -250,6 +276,16 @@ export async function closeGoal(k: Store, ref: string, outcome: 'done' | 'droppe
           .set({ status: outcome, closedAt: at, updatedAt: at })
           .where(and(eq(t.goals.id, goal.id), eq(t.goals.status, 'active'), isNull(t.goals.deletedAt))),
       ),
+      k.db.insert(t.goalReviews).values({
+        id: k.newId(),
+        ...k.stamps(),
+        goalId: goal.id,
+        outcome,
+        ...planVsTook(goal, k.today()),
+        happened: trimmed(answers.happened),
+        why: trimmed(answers.why),
+        change: trimmed(answers.change),
+      }),
       k.event('goal', goal.id, outcome),
     ]);
   } catch (e) {
@@ -260,6 +296,67 @@ export async function closeGoal(k: Store, ref: string, outcome: 'done' | 'droppe
     throw e;
   }
   return findGoal(k, goal.id);
+}
+
+/** A closed goal's review, or null (goals closed before reviews existed have none). */
+export async function goalReview(k: Store, goalId: string): Promise<GoalReview | null> {
+  const [review] = await k.db
+    .select()
+    .from(t.goalReviews)
+    .where(and(eq(t.goalReviews.goalId, goalId), isNull(t.goalReviews.deletedAt)))
+    .orderBy(asc(t.goalReviews.createdAt))
+    .limit(1);
+  return review ?? null;
+}
+
+// ---- deadline padding (planning fallacy) ----
+
+/** How many past goals the padding looks at. */
+const PADDING_GOALS = 3;
+/** Under this much lateness, no padding is suggested. */
+const PADDING_MIN_PERCENT = 10;
+
+export interface Padding {
+  /** How many past goals it is based on. */
+  goals: number;
+  /** How much longer they took than planned, in percent. */
+  percent: number;
+  ratio: number;
+}
+
+/**
+ * From the reviews of goals that were finished (dropped ones never reached the
+ * finish line, so they say nothing about how long it takes): total days taken over
+ * total days planned. Null when they ran on time or early, or there are none.
+ */
+export function paddingFrom(reviews: Pick<GoalReview, 'plannedDays' | 'tookDays'>[]): Padding | null {
+  const used = reviews.filter((r) => r.plannedDays > 0);
+  if (!used.length) return null;
+  const ratio = used.reduce((n, r) => n + r.tookDays, 0) / used.reduce((n, r) => n + r.plannedDays, 0);
+  const percent = Math.round((ratio - 1) * 100);
+  return percent < PADDING_MIN_PERCENT ? null : { goals: used.length, percent, ratio };
+}
+
+/** The padding from the last few finished goals. */
+export async function deadlinePadding(k: Store): Promise<Padding | null> {
+  const reviews = await k.db
+    .select({ plannedDays: t.goalReviews.plannedDays, tookDays: t.goalReviews.tookDays })
+    .from(t.goalReviews)
+    .where(and(eq(t.goalReviews.outcome, 'done'), gt(t.goalReviews.plannedDays, 0), isNull(t.goalReviews.deletedAt)))
+    .orderBy(desc(t.goalReviews.createdAt))
+    .limit(PADDING_GOALS);
+  return paddingFrom(reviews);
+}
+
+/** The deadline stretched by the padding, counted from today. */
+export function paddedDeadline(today: string, dueOn: string, padding: Padding): string {
+  const days = dayDiff(today, dueOn);
+  return days <= 0 ? dueOn : addDays(today, Math.ceil(days * padding.ratio));
+}
+
+/** "Your last 2 goals took 30% longer than planned." */
+export function paddingNote(padding: Padding): string {
+  return `Your last ${padding.goals === 1 ? 'goal' : `${padding.goals} goals`} took ${padding.percent}% longer than planned.`;
 }
 
 function refuseClosedGoal(goal: Goal, today: string): void {

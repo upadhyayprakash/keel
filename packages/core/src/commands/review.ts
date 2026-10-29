@@ -1,13 +1,13 @@
 import { eq } from 'drizzle-orm';
 import { blank, fail, heading, hint, line, ok, s, table, warn, type Block, type Question } from '../blocks';
 import { addDays, dayDiff, formatDay, weekStart } from '../dates';
-import { goalRef, listGoals } from '../goals';
+import { goalRef, listGoals, openGoal } from '../goals';
 import * as t from '../db/schema';
 import { KeelError } from '../errors';
 import { classify, tokenize } from '../parse';
 import type { CommitmentView, Store } from '../store';
 import { done, drop, nudge, renegotiate, set } from './edit';
-import { closeBlocks, goalRow, nextStepLine, stepsDoneIn } from './goals';
+import { askReview, closeBlocks, goalRow, nextStepLine, stepsDoneIn } from './goals';
 import { askNote, saveNote } from './projects';
 import { commitmentRow, projectSpan, type Command } from './shared';
 import { summaryBlocks } from './summary';
@@ -108,7 +108,8 @@ export const review: Command = {
         }
         // Closed on another device meanwhile: say so and move on (first close wins, ADR 0003).
         try {
-          pending.push(...(await closeBlocks(k, goalRef(g.goal), outcome)));
+          const answers = yield* askReview(await openGoal(k, goalRef(g.goal)), day, take());
+          pending.push(...(await closeBlocks(k, goalRef(g.goal), outcome, answers)));
         } catch (e) {
           if (!(e instanceof KeelError)) throw e;
           pending.push(fail(e.message), ...(e.hint ? [hint(e.hint)] : []));

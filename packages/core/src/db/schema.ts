@@ -170,6 +170,24 @@ export const goalSteps = sqliteTable(
   (t) => [index('goal_steps_goal').on(t.goalId, t.position), index('goal_steps_cue').on(t.status, t.cueAt)],
 );
 
+/** The review written when a goal closes (ADR 0004). Planned and took days pad the next goal's deadline. */
+export const goalReviews = sqliteTable(
+  'goal_reviews',
+  {
+    ...base(),
+    goalId: text('goal_id').notNull(),
+    outcome: text('outcome', { enum: ['done', 'dropped'] }).notNull(),
+    /** Days from the goal's start to its deadline, and to the day it closed. */
+    plannedDays: integer('planned_days').notNull(),
+    tookDays: integer('took_days').notNull(),
+    /** The three questions: what happened against the plan, why, what to change next time. */
+    happened: text('happened'),
+    why: text('why'),
+    change: text('change'),
+  },
+  (t) => [index('goal_reviews_goal').on(t.goalId), index('goal_reviews_outcome').on(t.outcome, t.createdAt)],
+);
+
 /**
  * ADR 0003 guarded writes: a guarded update is followed by `INSERT INTO write_guard
  * VALUES (changes())`. When the update matched no row, the CHECK fails and the

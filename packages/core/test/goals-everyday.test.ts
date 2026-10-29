@@ -96,15 +96,23 @@ describe('weekly review', () => {
     const text = await play('review', [
       'maybe', // g1: not an option, asked again
       'done', // g1
+      'Ran 5 km a week late', // what happened
+      'Two rainy weeks', // why
+      'Plan the treadmill earlier', // next time
       'drop', // g2
+      '', // three questions skipped
+      '',
+      '',
       'ok', // acme/website
       '', // acme priority
     ]);
     expect(text).toContain('STEP 4 OF 7 · GOALS');
     expect(text).toMatch(/g1\s+Run 5 km\s+1 done this week/);
     expect(text).toContain('"maybe" isn\'t an option.');
+    expect(text).toContain('Planned 27 days, took 4: 23 days early.');
     expect(text).toContain('g1 Run 5 km is done.');
     expect(text).toContain('g2 Read a book dropped.');
+    expect(await run('goal show g1')).toMatch(/REVIEW[\s\S]*happened\s+Ran 5 km a week late[\s\S]*next time\s+Plan the treadmill earlier/);
     expect(text).toContain('STEP 7 OF 7');
     expect(await run('goals')).toContain('No active goals');
   });

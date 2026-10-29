@@ -15,6 +15,13 @@
       "when": 1792261311507,
       "tag": "0001_goals",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1793284302316,
+      "tag": "0002_goal_reviews",
+      "breakpoints": true
     }
   ]
 }

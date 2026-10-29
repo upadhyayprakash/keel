@@ -7,11 +7,11 @@ import { weekStart } from '../dates';
 import { whoName } from '../self';
 import * as t from '../db/schema';
 import { KeelError } from '../errors';
-import { goalRef, listGoals } from '../goals';
+import { goalRef, goalReview, listGoals } from '../goals';
 import type { CommitmentView, Store } from '../store';
 import type { Command } from './shared';
 
-/** 2 added goals and their steps (ADR 0004). Version 1 files still import; an older Keel refuses version 2 instead of dropping goals. */
+/** 2 added goals, their steps and reviews (ADR 0004). Version 1 files still import; an older Keel refuses version 2 instead of dropping goals. */
 const EXPORT_VERSION = 2;
 
 // Export keys, in insert order for import: parents before the rows that point at them.
@@ -26,6 +26,7 @@ const TABLES = {
   contextLog: t.contextLog,
   goals: t.goals,
   goalSteps: t.goalSteps,
+  goalReviews: t.goalReviews,
   events: t.events,
   settings: t.settings,
 } as const;
@@ -97,7 +98,7 @@ export const importCommand: Command = {
 export type ExportCounts = Partial<Record<TableName, number>>;
 
 /** Rows that make a database "have data" (settings alone don't count). */
-const CONTENT = ['clients', 'projects', 'people', 'commitments', 'inboxItems', 'resumeNotes', 'goals', 'goalSteps'] as const;
+const CONTENT = ['clients', 'projects', 'people', 'commitments', 'inboxItems', 'resumeNotes', 'goals', 'goalSteps', 'goalReviews'] as const;
 
 /** How many live rows each content table holds. */
 export async function contentCounts(k: Store): Promise<Record<(typeof CONTENT)[number], number>> {
@@ -245,6 +246,16 @@ async function markdown(k: Store): Promise<string> {
           return `${st.position}. [${st.status === 'done' ? 'x' : ' '}] ${st.text}${bits.length ? ` · ${bits.join(' · ')}` : ''}`;
         }),
       );
+      const review = goal.status === 'active' ? null : await goalReview(k, goal.id);
+      if (review) {
+        out.push(
+          '',
+          `- Planned ${review.plannedDays} days, took ${review.tookDays}`,
+          ...(review.happened ? [`- What happened: ${review.happened}`] : []),
+          ...(review.why ? [`- Why: ${review.why}`] : []),
+          ...(review.change ? [`- Next time: ${review.change}`] : []),
+        );
+      }
     }
   }
 
