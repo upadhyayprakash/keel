@@ -1,14 +1,14 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api } from '../api';
-import { daysLeft, formatDay } from '../format';
+import { daysLeft, formatDay, localDay } from '../format';
 import type { Goal } from '../goal';
 import { goalByRef, loadGoals, markStepDone, notMarked } from '../lastSeen';
 import { go } from '../router';
-import { Checkbox, CueChip, NotLive, ProgressBar, ScreenTitle, StatusChip, StatusLine } from '../ui';
+import { Button, Checkbox, CueChip, NotLive, ProgressBar, ScreenTitle, StatusChip, StatusLine } from '../ui';
 
 // Screen 04 (designs/SCREENS.md): the finish line, progress, the plan, the open steps
-// to tick, then the done ones. The partner card, "Close goal" and "+ Add step" come
-// with slices 05 and 06. Not live, it shows the last-seen copy like Today.
+// to tick, then the done ones, and "Close goal" (screen 06). The partner card comes
+// with slice 05. Not live, it shows the last-seen copy like Today.
 
 /** Done steps shown before "Show all". */
 const DONE_SHOWN = 3;
@@ -80,7 +80,7 @@ export function GoalDetail({ goalRef }: { goalRef: string }) {
       {active ? null : (
         <StatusLine tone={goal.status === 'done' ? 'done' : 'today'}>
           {goal.status === 'done' ? 'Done' : 'Dropped on purpose'}
-          {goal.closedAt ? ` on ${formatDay(goal.closedAt.slice(0, 10), today)}` : ''}
+          {goal.closedAt ? ` on ${formatDay(localDay(goal.closedAt), today)}` : ''}
         </StatusLine>
       )}
       <p className="done-means">
@@ -122,7 +122,7 @@ export function GoalDetail({ goalRef }: { goalRef: string }) {
           {problem ? <StatusLine tone="late">{problem}</StatusLine> : null}
         </section>
       ) : active ? (
-        <p className="sub all-done">All steps done. Close the goal from your computer: goal done {goal.ref}</p>
+        <p className="sub all-done">All steps done. Close the goal to review how it went.</p>
       ) : null}
 
       {done.length ? (
@@ -146,6 +146,14 @@ export function GoalDetail({ goalRef }: { goalRef: string }) {
             </button>
           ) : null}
         </section>
+      ) : null}
+
+      {active && !savedAt ? (
+        <div className="actions">
+          <Button variant="outline" onClick={() => go({ name: 'review', ref: goal.ref })}>
+            Close goal
+          </Button>
+        </div>
       ) : null}
     </>
   );

@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { Keel } from '@keel/core';
+import { Keel, renderText } from '@keel/core';
 import { createApp } from '../src/index';
 
 // Monday 12 October 2026, 09:00 local time.
@@ -112,5 +112,51 @@ describe('owner goals API', () => {
   it('keeps the host and origin checks', async () => {
     expect((await app.request('/api/goals', { headers: { host: 'evil.example' } })).status).toBe(403);
     expect((await app.request('/api/goals', { method: 'POST', headers: { ...HOST, origin: 'https://evil.example', 'content-type': 'application/json' }, body: JSON.stringify(RUN_5K) })).status).toBe(403);
+  });
+});
+
+describe('close and review, and deadline padding', () => {
+  let clock: Date;
+  beforeEach(async () => {
+    keel.close();
+    clock = new Date(2026, 9, 12, 9, 0);
+    keel = await Keel.open({ url: ':memory:', now: () => clock });
+    app = createApp({ keel, port: 4242 });
+  });
+
+  it('closes a goal with the three answers, and a second close is a 409', async () => {
+    await post('/api/goals', { ...RUN_5K, dueOn: '2026-10-22' });
+    clock = new Date(2026, 9, 25, 9, 0);
+    const res = await post('/api/goals/g1/close', { outcome: 'done', happened: 'Ran it, 3 days late', why: 'Rain', change: '' });
+    expect(res.status).toBe(200);
+    expect(await res.json()).toMatchObject({ ref: 'g1', status: 'done' });
+    expect(renderText(await keel.run('goal show g1'))).toMatch(/planned 10, took 13[\s\S]*happened\s+Ran it, 3 days late[\s\S]*why\s+Rain/);
+
+    const again = await post('/api/goals/g1/close', { outcome: 'dropped' });
+    expect(again.status).toBe(409);
+    expect(((await again.json()) as ErrorJson).error).toMatch(/^g1 is already done/);
+  });
+
+  it('needs done or dropped, and answers 404 for a missing goal', async () => {
+    await post('/api/goals', RUN_5K);
+    const res = await post('/api/goals/g1/close', { outcome: 'finished' });
+    expect(res.status).toBe(400);
+    expect(((await res.json()) as ErrorJson).field).toBe('outcome');
+    expect((await post('/api/goals/g1/close', 'done', 'text/plain')).status).toBe(415);
+    expect((await post('/api/goals/g9/close', { outcome: 'done' })).status).toBe(404);
+  });
+
+  it('offers no padding at first, then the padded deadline once a finished goal ran late', async () => {
+    expect(await (await get('/api/goals/padding?dueOn=2026-11-08')).json()).toEqual({ today: '2026-10-12', padding: null, paddedOn: null });
+    await post('/api/goals', { ...RUN_5K, dueOn: '2026-10-22' });
+    clock = new Date(2026, 9, 25, 9, 0);
+    await post('/api/goals/g1/close', { outcome: 'done' });
+    clock = new Date(2026, 9, 26, 9, 0);
+    expect(await (await get('/api/goals/padding?dueOn=2026-11-05')).json()).toEqual({
+      today: '2026-10-26',
+      padding: { goals: 1, percent: 30, note: 'Your last goal took 30% longer than planned.' },
+      paddedOn: '2026-11-08', // 10 days left -> 13
+    });
+    expect(((await (await get('/api/goals/padding')).json()) as { paddedOn: string | null }).paddedOn).toBeNull();
   });
 });

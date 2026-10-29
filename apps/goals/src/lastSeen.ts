@@ -1,5 +1,5 @@
 import { api, unreachable, type ApiError } from './api';
-import type { Goal } from './goal';
+import type { CloseReview, Goal } from './goal';
 
 // The goals this phone last saw from Keel, so Today and a goal's page still open
 // while keel serve is not reachable (the computer sleeps). They show as not live,
@@ -73,6 +73,13 @@ export async function loadGoals(): Promise<Loaded> {
 /** Marks a step done at Keel and keeps the copy current. Never queued: when Keel is not reachable this throws and nothing changes. */
 export async function markStepDone(goal: Goal, position: number): Promise<Goal> {
   const updated = await api<Goal>(`/api/goals/${encodeURIComponent(goal.ref)}/steps/${position}/done`, { method: 'POST' });
+  rememberGoal(updated);
+  return updated;
+}
+
+/** Closes a goal at Keel with its review, and takes it out of the copy. Never queued, like a step. */
+export async function closeGoal(goal: Goal, review: CloseReview): Promise<Goal> {
+  const updated = await api<Goal>(`/api/goals/${encodeURIComponent(goal.ref)}/close`, { body: review });
   rememberGoal(updated);
   return updated;
 }

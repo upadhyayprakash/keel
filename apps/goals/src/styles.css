@@ -642,3 +642,42 @@ body {
 .all-done {
   margin: 14px 0;
 }
+
+/* Screen 06: the two outcome cards, the chosen one with a 2px accent border. */
+.outcome-cards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.outcome {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  color: var(--t-default);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.outcome-on {
+  border: 2px solid var(--t-accent);
+  padding: 13px 15px;
+}
+
+.plan-vs-took {
+  margin: 4px 0 16px;
+  color: var(--t-muted);
+}
+
+/* Screen 02: the padding note under the deadline, in `today`, with its "Use ..." link. */
+.padding-note {
+  margin: -8px 0 16px;
+  color: var(--t-today);
+}
+
+.padding-note .btn-link {
+  min-height: 0;
+  padding: 0 0 0 4px;
+}

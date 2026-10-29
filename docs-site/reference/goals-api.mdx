@@ -13,6 +13,8 @@ With a login set up ([phone login](/guides/phone-login)), every route needs a Go
 | `GET /api/goals/g1` | One goal with its steps |
 | `POST /api/goals` | Creates a goal. Answers `201` with the goal |
 | `POST /api/goals/g1/steps/2/done` | Marks step 2 done. Answers with the goal |
+| `POST /api/goals/g1/close` | Closes the goal as done or dropped, with its review. Answers with the goal |
+| `GET /api/goals/padding?dueOn=2026-11-08` | How late past goals ran, and that deadline padded to allow for it |
 
 ## Creating a goal
 
@@ -33,9 +35,25 @@ With a login set up ([phone login](/guides/phone-login)), every route needs a Go
 
 `dueOn` is a day (`YYYY-MM-DD`) and `cueAt` a local time (`YYYY-MM-DDTHH:MM`). `appetite`, `obstacle` and each step's `cueAt`, `cuePlace` and `minimum` are optional. The first step is the first one in the list, unless one has `"firstStep": true`. Send it with `content-type: application/json`.
 
+## Closing a goal
+
+```json
+{ "outcome": "done", "happened": "Ran it, 3 days late", "why": "Two rainy weeks", "change": "Plan the treadmill first" }
+```
+
+`outcome` is `done` or `dropped`. The three answers are optional, as in `goal done`. A goal already closed, here or on another device, answers `409`.
+
+## Deadline padding
+
+```json
+{ "today": "2026-10-26", "padding": { "goals": 2, "percent": 30, "note": "Your last 2 goals took 30% longer than planned." }, "paddedOn": "2026-11-08" }
+```
+
+`padding` comes from the last 3 goals closed as done, and is `null` when they ran less than 10% late (or there are none). `paddedOn` is `dueOn` stretched by the same share from `today`, or `null` without padding or `dueOn`.
+
 ## Errors
 
-Every error has the same shape: `{ "error", "hint", "field" }`. `field` names the input it is about (`title`, `doneMeans`, `dueOn`, `plan`, `steps`), or is `null`.
+Every error has the same shape: `{ "error", "hint", "field" }`. `field` names the input it is about (`title`, `doneMeans`, `dueOn`, `plan`, `steps`, `outcome`), or is `null`.
 
 | Status | When |
 |---|---|

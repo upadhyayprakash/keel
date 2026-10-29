@@ -1,11 +1,13 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { api, ApiError } from '../api';
-import { composePlan, type Goal, type NewGoal as NewGoalBody } from '../goal';
+import { composePlan, type Goal, type NewGoal as NewGoalBody, type PaddingAnswer } from '../goal';
+import { formatDay } from '../format';
 import { go } from '../router';
 import { Button, Card, ChoiceChips, CueChip, Field, ScreenTitle, StatusChip, StepBar } from '../ui';
 
 // Screens 02 and 03 (designs/SCREENS.md): the finish line, then the plan for the hard part.
 // The server checks everything again (ADR 0004); its `field` puts an error back where it belongs.
+// Once past goals ran late, a note under the deadline offers the padded day (planning fallacy).
 
 type Draft = NewGoalBody['steps'][number];
 type Errors = Partial<Record<'title' | 'doneMeans' | 'dueOn' | 'appetite' | 'obstacle' | 'then' | 'steps' | 'step', string>>;
@@ -33,7 +35,25 @@ export function NewGoal() {
   const [errors, setErrors] = useState<Errors>({});
   const [saving, setSaving] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
+  const [padding, setPadding] = useState<PaddingAnswer | null>(null);
+  // The padded day once taken, so the note doesn't offer to pad it again.
+  const [padTaken, setPadTaken] = useState<string | null>(null);
   const today = localToday();
+
+  // Asks Keel for the padded deadline whenever the deadline changes. No answer, no note.
+  useEffect(() => {
+    setPadding(null);
+    if (!dueOn || dueOn === padTaken) return;
+    let current = true;
+    api<PaddingAnswer>(`/api/goals/padding?dueOn=${encodeURIComponent(dueOn)}`).then(
+      (answer) => current && setPadding(answer),
+      () => undefined,
+    );
+    return () => {
+      current = false;
+    };
+  }, [dueOn, padTaken]);
+  const paddedOn = padding?.padding && padding.paddedOn && padding.paddedOn > dueOn ? padding.paddedOn : null;
 
   const appetite = time === 'Other' ? otherTime.trim() || null : time;
 
@@ -107,6 +127,20 @@ export function NewGoal() {
         <Field label="Goal" value={title} onChange={edit('title', setTitle)} placeholder="Run 5 km without stopping" error={errors.title} />
         <Field label="Done means..." helper="How will you know it is finished?" value={doneMeans} onChange={edit('doneMeans', setDoneMeans)} placeholder="I run 5 km in one go" multiline error={errors.doneMeans} />
         <Field label="Deadline" type="date" min={today} value={dueOn} onChange={edit('dueOn', setDueOn)} error={errors.dueOn} />
+        {paddedOn && padding?.padding ? (
+          <p className="field-help padding-note" role="status">
+            {padding.padding.note}
+            <Button
+              variant="link"
+              onClick={() => {
+                setPadTaken(paddedOn);
+                setDueOn(paddedOn);
+              }}
+            >
+              {`Use ${formatDay(paddedOn, padding.today)}`}
+            </Button>
+          </p>
+        ) : null}
         <ChoiceChips label="Time you will give it" options={TIMES} value={time} onChange={(v) => setTime(v === time ? null : v)} />
         {time === 'Other' ? <Field label="How much time?" value={otherTime} onChange={setOtherTime} placeholder="30 minutes a day" /> : null}
         <Button type="submit">Next: plan for the hard part</Button>

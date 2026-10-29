@@ -1,5 +1,21 @@
 import type { Context, Hono } from 'hono';
-import { Conflict, KeelError, NotFound, completeStep, createGoal, findGoal, goalData, listGoals, type Keel, type NewGoal, type NewStep } from '@keel/core';
+import {
+  Conflict,
+  KeelError,
+  NotFound,
+  closeGoal,
+  completeStep,
+  createGoal,
+  deadlinePadding,
+  findGoal,
+  goalData,
+  listGoals,
+  paddedDeadline,
+  paddingNote,
+  type Keel,
+  type NewGoal,
+  type NewStep,
+} from '@keel/core';
 
 // ADR 0004: the owner's API for the Goals app. Every route works on the goal model
 // in @keel/core, so the phone, the CLI and the browser terminal share one set of
@@ -55,6 +71,21 @@ export function goalRoutes(app: Hono, keel: Keel): void {
     }
   });
 
+  // The deadline padding for the new-goal form (planning fallacy): how late past goals
+  // ran, and ?dueOn=YYYY-MM-DD stretched by as much. `padding` is null when there is none.
+  // Registered before /api/goals/:ref, so "padding" is never read as a goal.
+  app.get('/api/goals/padding', async (c) => {
+    const padding = await deadlinePadding(k);
+    const dueOn = c.req.query('dueOn');
+    const today = k.today();
+    const day = dueOn && /^\d{4}-\d{2}-\d{2}$/.test(dueOn) ? dueOn : null;
+    return c.json({
+      today,
+      padding: padding && { goals: padding.goals, percent: padding.percent, note: paddingNote(padding) },
+      paddedOn: padding && day ? paddedDeadline(today, day, padding) : null,
+    });
+  });
+
   app.get('/api/goals/:ref', async (c) => {
     try {
       return c.json(goalData(await findGoal(k, c.req.param('ref'))));
@@ -69,6 +100,21 @@ export function goalRoutes(app: Hono, keel: Keel): void {
     if (!Number.isInteger(position) || position < 1) return c.json({ error: 'Which step? Give its number.', hint: null, field: null }, 400);
     try {
       return c.json(goalData(await completeStep(k, c.req.param('ref'), position)));
+    } catch (e) {
+      return failure(c, e);
+    }
+  });
+
+  // Closes a goal as done or dropped, with the three review answers (each optional).
+  // The first close wins: a goal closed on another device is a 409 that says when.
+  app.post('/api/goals/:ref/close', async (c) => {
+    if (!c.req.header('content-type')?.startsWith('application/json')) return c.text('Expected JSON', 415);
+    const body = (await c.req.json<unknown>().catch(() => null)) as Record<string, unknown> | null;
+    const outcome = body && typeof body === 'object' ? body.outcome : undefined;
+    if (outcome !== 'done' && outcome !== 'dropped') return c.json({ error: 'Close it as done or dropped.', hint: null, field: 'outcome' }, 400);
+    try {
+      const view = await closeGoal(k, c.req.param('ref'), outcome, { happened: optional(body!.happened), why: optional(body!.why), change: optional(body!.change) });
+      return c.json(goalData(view));
     } catch (e) {
       return failure(c, e);
     }

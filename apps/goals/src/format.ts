@@ -7,6 +7,12 @@ function fromYmd(day: string): Date {
   return new Date(Date.UTC(y ?? 1970, (m ?? 1) - 1, d ?? 1));
 }
 
+/** The local day of an ISO time (`closedAt`, `createdAt`) on this phone, `YYYY-MM-DD`. */
+export function localDay(iso: string): string {
+  const d = new Date(iso);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
 /** Whole days from `from` to `to`; negative when `to` is earlier. */
 export function dayDiff(from: string, to: string): number {
   return Math.round((fromYmd(to).getTime() - fromYmd(from).getTime()) / 86_400_000);
