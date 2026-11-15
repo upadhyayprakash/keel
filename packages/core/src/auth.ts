@@ -277,13 +277,15 @@ export class AuthStore {
     const live = this.sessions();
     const token = newToken();
     const ttl = input.method === 'totp' ? SESSION_TTL.terminal : SESSION_TTL[input.scope];
+    // One reading of the clock, so a session lasts exactly its time to live.
+    const at = this.iso();
     const session: Session = {
       ...input,
       id: newId(new Set(live.map((s) => s.id))),
       tokenHash: hashToken(token),
-      createdAt: this.iso(),
-      expiresAt: this.iso(ttl),
-      lastUsedAt: this.iso(),
+      createdAt: at,
+      expiresAt: new Date(Date.parse(at) + ttl).toISOString(),
+      lastUsedAt: at,
     };
     this.write(FILES.sessions, [...live, session]);
     return { session, token };
