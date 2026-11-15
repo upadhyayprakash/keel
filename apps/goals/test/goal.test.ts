@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { composePlan, nextStep, type Goal } from '../src/goal';
+import { composePlan, nextStep, planVsTookText, type Goal } from '../src/goal';
 import { pathOf, routeOf } from '../src/router';
 
 describe('composePlan', () => {
@@ -44,5 +44,24 @@ describe('nextStep', () => {
 
   it('is null when every step is done', () => {
     expect(nextStep(steps('done', 'done'))).toBeNull();
+  });
+});
+
+describe('the review route', () => {
+  it('opens /goals/<ref>/review, and back to the same path', () => {
+    expect(routeOf('/goals/g3/review')).toEqual({ name: 'review', ref: 'g3' });
+    expect(routeOf('/goals/G3/review/')).toEqual({ name: 'review', ref: 'g3' });
+    expect(pathOf({ name: 'review', ref: 'g3' })).toBe('/goals/g3/review');
+  });
+});
+
+describe('planVsTookText', () => {
+  // Made on 12 October, at noon so the phone's timezone does not move the day.
+  const goal = { createdAt: new Date(2026, 9, 12, 12, 0).toISOString(), dueOn: '2026-10-22' };
+
+  it('reads like keel goal done: over, early or on time', () => {
+    expect(planVsTookText(goal, '2026-10-25')).toBe('Planned 10 days, took 13: 3 days over.');
+    expect(planVsTookText(goal, '2026-10-21')).toBe('Planned 10 days, took 9: 1 day early.');
+    expect(planVsTookText(goal, '2026-10-22')).toBe('Planned 10 days, took 10, on time.');
   });
 });

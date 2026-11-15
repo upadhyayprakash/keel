@@ -10,11 +10,13 @@ description: "Where it lives, backups, export and import."
 
 ```bash
 keel export > keel-backup.json     # everything, as JSON
-keel export --md > keel.md         # a readable snapshot of every client, project and commitment
+keel export --md > keel.md         # a readable snapshot of every client, project, commitment and goal
 keel import keel-backup.json       # restore into an empty database
 ```
 
 Import only fills an empty database, so nothing is ever overwritten. It writes everything in one step: a bad file saves nothing.
+
+Exports include your goals and their steps. A file from an older Keel, without goals, still imports. An older Keel refuses a newer file instead of leaving its goals out.
 
 ## Scripts
 

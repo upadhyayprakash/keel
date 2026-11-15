@@ -1,19 +1,22 @@
 import { useEffect, useState } from 'react';
 
-// /goals/ (Today), /goals/new and /goals/<ref> (a goal, `g3`). keel serve answers every
+// /goals/ (Today), /goals/new, /goals/<ref> (a goal, `g3`) and /goals/<ref>/review (close it). keel serve answers every
 // /goals/... path with the app, so a reload or a shared link lands on the same screen.
 
-export type Route = { name: 'today' } | { name: 'new' } | { name: 'goal'; ref: string };
+export type Route = { name: 'today' } | { name: 'new' } | { name: 'goal'; ref: string } | { name: 'review'; ref: string };
 
 export function routeOf(pathname: string): Route {
   const rest = pathname.replace(/^\/goals\/?/, '').replace(/\/$/, '');
   if (rest === 'new') return { name: 'new' };
   if (/^g\d+$/i.test(rest)) return { name: 'goal', ref: rest.toLowerCase() };
+  const review = /^(g\d+)\/review$/i.exec(rest);
+  if (review) return { name: 'review', ref: review[1]!.toLowerCase() };
   return { name: 'today' };
 }
 
 export function pathOf(route: Route): string {
   if (route.name === 'goal') return `/goals/${route.ref}`;
+  if (route.name === 'review') return `/goals/${route.ref}/review`;
   return route.name === 'new' ? '/goals/new' : '/goals/';
 }
 

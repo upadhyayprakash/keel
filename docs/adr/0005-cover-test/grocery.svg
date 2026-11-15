@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 560 320" width="560" height="320">
+  <title>Grocery basket</title>
+  <g stroke="#0F1A2A" stroke-width="4" stroke-linejoin="round" stroke-linecap="round">
+    <path d="M70 200 C40 120 120 40 230 50 C330 20 470 40 500 130 C530 210 450 290 330 290 C230 305 100 300 70 200Z" fill="#DCFCE7" stroke="none"/>
+    <path d="M186 156 C176 0 384 0 374 156" fill="none"/>
+    <!-- apple -->
+    <circle cx="232" cy="132" r="30" fill="#EF4444"/>
+    <path d="M232 104 C232 92 238 86 244 82" fill="none"/>
+    <path d="M240 90 C250 78 264 80 268 86 C260 96 248 96 240 90Z" fill="#4ADE80"/>
+    <!-- carrot -->
+    <path d="M290 100 L324 100 L312 182Z" fill="#FB923C"/>
+    <path d="M300 118 h10 M304 138 h10" fill="none" stroke-width="3"/>
+    <path d="M298 100 C288 80 284 70 290 62 C298 72 302 84 304 100Z" fill="#4ADE80"/>
+    <path d="M308 100 C306 76 308 62 316 54 C320 68 320 84 316 100Z" fill="#22C55E"/>
+    <path d="M318 100 C324 84 334 76 344 74 C342 88 332 98 322 102Z" fill="#4ADE80"/>
+    <!-- milk -->
+    <rect x="344" y="104" width="38" height="70" rx="6" fill="#93C5FD"/>
+    <rect x="350" y="92" width="26" height="16" rx="4" fill="#F8FAFC"/>
+    <rect x="350" y="124" width="26" height="22" rx="4" fill="#F8FAFC" stroke-width="3"/>
+    <!-- basket -->
+    <path d="M170 170 L390 170 L360 270 L200 270Z" fill="#FDBA74"/>
+    <path d="M181 205 H379 M191 240 H369" fill="none" stroke-width="3"/>
+    <path d="M225 178 L240 270 M280 178 V270 M335 178 L320 270" fill="none" stroke-width="3"/>
+    <rect x="160" y="154" width="240" height="26" rx="10" fill="#FB923C"/>
+    <!-- sparkles -->
+    <path d="M110 120 v22 M99 131 h22 M450 90 v18 M441 99 h18" fill="none" stroke="#067647" stroke-width="3"/>
+  </g>
+</svg>

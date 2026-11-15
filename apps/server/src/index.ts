@@ -7,9 +7,13 @@ import { Hono, type Context } from 'hono';
 import { parsePublicUrl, type Keel } from '@keel/core';
 import { authRoutes, requireSession, type AuthOptions } from './auth';
 import { goalRoutes } from './goals';
+import { pushRoutes, pushSender, type PushOptions } from './push';
+import { startScheduler } from './scheduler';
 
 export { checkServe, COOKIES } from './auth';
 export type { AuthOptions } from './auth';
+export { startScheduler, type Scheduler } from './scheduler';
+export { pushSender, vapidFrom, VAPID_ACCOUNT, type PushMessage, type PushOptions, type PushResult, type PushSender, type Vapid, type VapidKeys } from './push';
 
 export interface ServerOptions {
   keel: Keel;
@@ -26,6 +30,8 @@ export interface ServerOptions {
   host?: string;
   /** PEM contents of `--cert` and `--key`, to serve HTTPS directly. */
   tls?: { cert: string; key: string };
+  /** Web push for Goals reminders (ADR 0004). Without it the push routes answer 503. */
+  push?: PushOptions;
 }
 
 // Next to the bundle in the published package, or apps/<name>/dist when running from source.
@@ -46,7 +52,7 @@ const TYPES: Record<string, string> = {
   '.woff2': 'font/woff2',
 };
 
-export function createApp({ keel, port, webDist = defaultDist('web'), goalsDist = defaultDist('goals'), devOrigin, auth, host }: ServerOptions): Hono {
+export function createApp({ keel, port, webDist = defaultDist('web'), goalsDist = defaultDist('goals'), devOrigin, auth, host, push }: ServerOptions): Hono {
   const app = new Hono();
   const allowed = new Set([`127.0.0.1:${port}`, `localhost:${port}`, ...(devOrigin ? [devOrigin] : [])]);
   if (auth?.publicUrl) allowed.add(parsePublicUrl(auth.publicUrl).rpId);
@@ -94,6 +100,7 @@ export function createApp({ keel, port, webDist = defaultDist('web'), goalsDist 
 
   app.get('/api/state', async (c) => c.json(await keel.state()));
 
+  pushRoutes(app, keel, push);
   goalRoutes(app, keel);
   app.get('/api/complete', async (c) => c.json(await keel.complete(c.req.query('line') ?? '')));
 
@@ -125,6 +132,8 @@ export function startServer(opts: ServerOptions): Promise<void> {
   const app = createApp({ ...opts, devOrigin: opts.devOrigin ?? process.env.KEEL_DEV_ORIGIN });
   const hostname = opts.host ?? '127.0.0.1';
   const tls = opts.tls ? { createServer: createHttpsServer, serverOptions: { cert: opts.tls.cert, key: opts.tls.key } } : {};
+  // Cue reminders, from the first minute (ADR 0004).
+  if (opts.push) startScheduler(opts.keel, pushSender(opts.keel, opts.push));
   return new Promise((resolve) => {
     serve({ fetch: app.fetch, port: opts.port, hostname, ...tls }, () => {
       const local = `${opts.tls ? 'https' : 'http'}://${hostname === '127.0.0.1' ? 'localhost' : hostname}:${opts.port}`;

@@ -55,5 +55,6 @@ describe.skipIf(!SYNC_URL)('two devices', () => {
 
     laptop.close();
     desktop.close();
-  });
+    // Opening each device runs every migration over the network; a slow CI runner needs more than 5 s.
+  }, 30_000);
 });

@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 560 320" width="560" height="320">
+  <title>Trip packing</title>
+  <g stroke="#0F1A2A" stroke-width="4" stroke-linejoin="round" stroke-linecap="round">
+    <path d="M60 180 C40 100 130 40 240 50 C340 24 480 50 505 130 C530 210 450 292 330 288 C230 304 80 270 60 180Z" fill="#FEEDDD" stroke="none"/>
+    <!-- paper plane and trail -->
+    <path d="M300 60 C340 20 380 90 420 54" fill="none" stroke-dasharray="2 12" stroke-width="4"/>
+    <path d="M420 54 L508 30 L470 92Z" fill="#F8FAFC"/>
+    <path d="M470 92 L508 30 L474 116Z" fill="#CBD5E1"/>
+    <!-- suitcase -->
+    <path d="M244 112 V90 a12 12 0 0 1 12 -12 h48 a12 12 0 0 1 12 12 V112" fill="none"/>
+    <rect x="160" y="110" width="270" height="156" rx="24" fill="#FB923C"/>
+    <rect x="214" y="110" width="22" height="156" fill="#C2410C"/>
+    <rect x="354" y="110" width="22" height="156" fill="#C2410C"/>
+    <rect x="283" y="124" width="24" height="18" rx="5" fill="#FBBF24"/>
+    <!-- stickers -->
+    <circle cx="295" cy="200" r="26" fill="#5EEAD4"/>
+    <path d="M295 184 l5 11 l12 1 l-9 8 l3 12 l-11 -7 l-11 7 l3 -12 l-9 -8 l12 -1Z" fill="#F8FAFC" stroke-width="3"/>
+    <rect x="390" y="150" width="28" height="22" rx="5" fill="#F9A8D4" transform="rotate(8 404 161)"/>
+    <rect x="172" y="212" width="30" height="22" rx="5" fill="#93C5FD" transform="rotate(-8 187 223)"/>
+    <!-- wheels -->
+    <circle cx="206" cy="278" r="11" fill="#0F1A2A"/>
+    <circle cx="384" cy="278" r="11" fill="#0F1A2A"/>
+    <path d="M110 300 H480" fill="none" stroke-width="3" opacity="0.35"/>
+    <path d="M90 150 v20 M80 160 h20" fill="none" stroke="#C2410C" stroke-width="3"/>
+  </g>
+</svg>

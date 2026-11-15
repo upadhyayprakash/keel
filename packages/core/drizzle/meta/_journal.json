@@ -15,6 +15,27 @@
       "when": 1792261311507,
       "tag": "0001_goals",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1793284302316,
+      "tag": "0002_goal_reviews",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1793357546085,
+      "tag": "0003_push_subscriptions",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1793557066029,
+      "tag": "0004_cue_reminders",
+      "breakpoints": true
     }
   ]
 }

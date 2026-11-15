@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect, useState, type ReactNode } from 'react';
 import { authState, goSignIn, needsSignIn, unreachable } from './api';
 import { useRoute } from './router';
+import { CloseGoal } from './screens/CloseGoal';
 import { GoalDetail } from './screens/GoalDetail';
 import { NewGoal } from './screens/NewGoal';
 import { Today } from './screens/Today';
@@ -31,6 +32,7 @@ function Screen() {
   const route = useRoute();
   if (route.name === 'new') return <NewGoal />;
   if (route.name === 'goal') return <GoalDetail key={route.ref} goalRef={route.ref} />;
+  if (route.name === 'review') return <CloseGoal key={route.ref} goalRef={route.ref} />;
   return <Today />;
 }
 

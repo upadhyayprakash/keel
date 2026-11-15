@@ -3,7 +3,9 @@ import { blank, data, heading, hint, line, s, table, type Bar, type Block, type 
 import { addDays, dayStartIso, formatDay, formatRange, isoWeek, weekStart, ymd } from '../dates';
 import * as t from '../db/schema';
 import { KeelError } from '../errors';
+import { goalRef, listGoals, progressLabel } from '../goals';
 import type { Store } from '../store';
+import { goalRow, stepsDoneIn } from './goals';
 import { formatDuration } from './projects';
 import { matchesScope, type Command } from './shared';
 
@@ -133,6 +135,17 @@ export async function summaryBlocks(k: Store, kind: PeriodKind, scope?: string):
   } else {
     out.push(blank(), hint('No time logged yet. Time comes from switch, so it fills in as you move between projects.'));
   }
+  // Active goals, and goals closed in the period, with the steps done in it. Not in a +client summary: goals have no client.
+  const closedIn = (iso: string | null) => Boolean(iso) && localDay(iso!) >= period.from && localDay(iso!) <= period.to;
+  const goals = scope ? [] : (await listGoals(k)).filter((g) => g.goal.status === 'active' || closedIn(g.goal.closedAt));
+  const goalStats = goals.map((g) => ({ view: g, steps: stepsDoneIn(g, period.from, period.to) }));
+  if (goals.length) {
+    out.push(
+      blank(),
+      heading('GOALS', 'muted'),
+      table(goalStats.map(({ view, steps }) => goalRow(view, k.today(), [s(`${steps} step${steps === 1 ? '' : 's'} done`, steps ? 'done' : 'muted')]))),
+    );
+  }
   out.push(
     data({
       period: { kind, from: period.from, to: period.to },
@@ -147,6 +160,7 @@ export async function summaryBlocks(k: Store, kind: PeriodKind, scope?: string):
       minutesByClient: Object.fromEntries([...st.minutesByClient].map(([slug, v]) => [slug, Math.round(v.minutes)])),
       switches: st.switches,
       resumeNotes: st.notes,
+      goals: goalStats.map(({ view, steps }) => ({ ref: goalRef(view.goal), title: view.goal.title, status: view.goal.status, stepsDone: steps, progress: progressLabel(view.steps) })),
     }),
   );
   return out;

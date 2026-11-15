@@ -147,6 +147,8 @@ export const goals = sqliteTable(
     plan: text('plan').notNull(),
     status: text('status', { enum: ['active', 'done', 'dropped'] }).notNull().default('active'),
     closedAt: text('closed_at'),
+    /** Cues missed since a step was last done; 2 or more is flagged ("never miss twice"). */
+    missedInARow: integer('missed_in_a_row').notNull().default(0),
   },
   (t) => [uniqueIndex('goals_ref').on(t.refNo), index('goals_active').on(t.status, t.dueOn)],
 );
@@ -166,8 +168,46 @@ export const goalSteps = sqliteTable(
     firstStep: integer('first_step', { mode: 'boolean' }).notNull().default(false),
     status: text('status', { enum: ['open', 'done'] }).notNull().default('open'),
     doneAt: text('done_at'),
+    /** The `cueAt` a reminder went out for; a new cue time gets its own reminder. */
+    cuePushedFor: text('cue_pushed_for'),
+    /** The `cueAt` that was missed: the step was still open when that day ended. */
+    missedCueAt: text('missed_cue_at'),
   },
   (t) => [index('goal_steps_goal').on(t.goalId, t.position), index('goal_steps_cue').on(t.status, t.cueAt)],
+);
+
+/** The review written when a goal closes (ADR 0004). Planned and took days pad the next goal's deadline. */
+export const goalReviews = sqliteTable(
+  'goal_reviews',
+  {
+    ...base(),
+    goalId: text('goal_id').notNull(),
+    outcome: text('outcome', { enum: ['done', 'dropped'] }).notNull(),
+    /** Days from the goal's start to its deadline, and to the day it closed. */
+    plannedDays: integer('planned_days').notNull(),
+    tookDays: integer('took_days').notNull(),
+    /** The three questions: what happened against the plan, why, what to change next time. */
+    happened: text('happened'),
+    why: text('why'),
+    change: text('change'),
+  },
+  (t) => [index('goal_reviews_goal').on(t.goalId), index('goal_reviews_outcome').on(t.outcome, t.createdAt)],
+);
+
+/** A phone or browser that turned on Goals reminders (ADR 0004): where web push sends, and its keys. */
+export const pushSubscriptions = sqliteTable(
+  'push_subscriptions',
+  {
+    ...base(),
+    /** The browser push service's URL for this device. */
+    endpoint: text('endpoint').notNull(),
+    p256dh: text('p256dh').notNull(),
+    auth: text('auth').notNull(),
+    /** The VAPID public key the device subscribed with; a server with other keys cannot send to it. */
+    serverKey: text('server_key').notNull(),
+    lastUsedAt: text('last_used_at'),
+  },
+  (t) => [uniqueIndex('push_subscriptions_endpoint').on(t.endpoint)],
 );
 
 /**

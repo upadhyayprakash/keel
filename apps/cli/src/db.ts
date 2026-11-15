@@ -118,7 +118,7 @@ export function terminalIo(paint: Paint, color: boolean): Io {
 const plural = (n: number, one: string) => `${n} ${one}${n === 1 ? '' : 's'}`;
 type Counts = Awaited<ReturnType<typeof contentCounts>>;
 const describe = (c: Counts) =>
-  [plural(c.clients, 'client'), plural(c.projects, 'project'), plural(c.commitments, 'commitment'), plural(c.resumeNotes, 'resume note')].join(', ');
+  [plural(c.clients, 'client'), plural(c.projects, 'project'), plural(c.commitments, 'commitment'), plural(c.resumeNotes, 'resume note'), ...(c.goals ? [plural(c.goals, 'goal')] : [])].join(', ');
 const total = (c: Counts) => Object.values(c).reduce((a, b) => a + b, 0);
 const sameCounts = (a: Counts, b: Counts) => (Object.keys(a) as Array<keyof Counts>).every((k) => a[k] === b[k]);
 /** The local calendar day, so file names match the user's own date. */

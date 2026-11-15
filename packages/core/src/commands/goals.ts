@@ -1,8 +1,28 @@
 import { blank, data, fail, heading, hint, line, ok, s, table, warn, type Block, type Question, type Span } from '../blocks';
-import { describeDue, formatDay, parseCue, parseDue } from '../dates';
+import { describeDue, formatDay, parseCue, parseDue, ymd } from '../dates';
 import { KeelError } from '../errors';
-import { checkGoalFields, closeGoal, completeStep, createGoal, findGoal, goalRef, listGoals, progressLabel, type GoalStep, type GoalView, type NewStep } from '../goals';
+import {
+  checkGoalFields,
+  closeGoal,
+  completeStep,
+  createGoal,
+  deadlinePadding,
+  findGoal,
+  goalRef,
+  goalReview,
+  listGoals,
+  openGoal,
+  paddedDeadline,
+  paddingNote,
+  planVsTook,
+  progressLabel,
+  type GoalStep,
+  type GoalView,
+  type NewStep,
+  type ReviewAnswers,
+} from '../goals';
 import type { Parsed } from '../parse';
+import { isMissed } from '../reminders';
 import type { Store } from '../store';
 import { goalData, type Command, type Flow } from './shared';
 
@@ -17,14 +37,20 @@ const SKIP = 'enter on an empty line skips';
 
 export const goal: Command = {
   name: 'goal',
-  usage: 'goal new "<name>" [done:"..."] [due:<when>] [time:"..."] [obstacle:"..."] [plan:"If ..., then I will ..."] [step:"..."] | goals [--all] | goal show|done|drop <g1> | goal step done <g1> <n>',
+  usage:
+    'goal new "<name>" [done:"..."] [due:<when>] [time:"..."] [obstacle:"..."] [plan:"If ..., then I will ..."] [step:"..."] | goals [--all] | goal show <g1> | goal done|drop <g1> [happened:"..."] [why:"..."] [change:"..."] | goal step done <g1> <n>',
   summary: 'Set one small goal with steps and an if-then plan, then finish it',
   async *flow(k, p) {
     const sub = (p.words[0] ?? 'ls').toLowerCase();
     if (sub === 'new') return yield* newGoal(k, p);
     if (sub === 'ls' || sub === 'list') return listBlocks(k, p.flags.has('all'));
     if (sub === 'show') return showGoal(k, goalArg(p.words[1], 'show'));
-    if (sub === 'done' || sub === 'drop') return closeBlocks(k, goalArg(p.words[1], sub), sub === 'done' ? 'done' : 'dropped');
+    if (sub === 'done' || sub === 'drop') {
+      const view = await openGoal(k, goalArg(p.words[1], sub));
+      const given = reviewInline(p);
+      const answers = given ?? (yield* askReview(view, k.today()));
+      return closeBlocks(k, goalRef(view.goal), sub === 'done' ? 'done' : 'dropped', answers);
+    }
     if (sub === 'step') return stepDone(k, p);
     throw new KeelError(`Unknown "goal ${sub}".`, 'Try: goal new, goals, goal show g1, goal step done g1 2, goal done g1, goal drop g1');
   },
@@ -93,7 +119,7 @@ async function* newGoal(k: Store, p: Parsed): Flow {
   const title = yield* field(given.title || undefined, { prompt: 'What is the goal?', hint: 'Small and finishable, like: Run 5 km' }, (a) => (check({ title: a }), a), null);
   const intro = [line([s('◆ ', 'accent'), s('New goal: '), s(title, 'default', { bold: true })])];
   const doneMeans = yield* field(given.fields.done, { prompt: 'What does done look like?', hint: 'Something you could check, like: I run 5 km in one go' }, (a) => (check({ doneMeans: a }), a), 'done', intro);
-  const dueOn = yield* field(
+  const picked = yield* field(
     given.fields.due,
     { prompt: 'Deadline?', hint: 'like nov 8, +3w or 2026-11-08' },
     (a) => {
@@ -105,6 +131,7 @@ async function* newGoal(k: Store, p: Parsed): Flow {
     },
     'due',
   );
+  const dueOn = yield* padDeadline(k, picked, given.fields.due !== undefined);
   const appetite = yield* field(given.fields.time, { prompt: 'How much time will you give it?', hint: `like 30 minutes a day · ${SKIP}` }, (a) => a || null, 'time');
   const obstacle = yield* field(
     given.fields.obstacle,
@@ -131,6 +158,25 @@ async function* newGoal(k: Store, p: Parsed): Flow {
     hint(`First step: ${first.text}. When it's done: goal step done ${ref} ${first.position}`),
     data(goalData(view)),
   ];
+}
+
+/**
+ * Planning fallacy (ADR 0004): when past goals ran late, offers the deadline
+ * stretched by as much. A deadline given inline is kept as given.
+ */
+async function* padDeadline(k: Store, dueOn: string, inlineDue: boolean): Flow<string> {
+  const padding = inlineDue ? null : await deadlinePadding(k);
+  if (!padding) return dueOn;
+  const today = k.today();
+  const padded = paddedDeadline(today, dueOn, padding);
+  if (padded <= dueOn) return dueOn;
+  const note = `${paddingNote(padding)} ${formatDay(padded, today)} would allow for that.`;
+  const answer = (
+    yield { blocks: [line([s('◆ ', 'today'), s(note, 'today')])], question: { prompt: `Use ${formatDay(padded, today)} instead?`, hint: `y · enter keeps ${formatDay(dueOn, today)}` } }
+  )
+    .trim()
+    .toLowerCase();
+  return answer === 'y' || answer === 'yes' ? padded : dueOn;
 }
 
 /** Step text, then its cue and smaller version, until an empty line. */
@@ -210,6 +256,7 @@ function stepRow(step: GoalStep, today: string): Span[] {
     cue ? s(cue, 'muted') : s('-', 'dim'),
     ...(step.minimum ? [s(`or ${step.minimum}`, 'dim')] : []),
     ...(step.firstStep && !done ? [s('first step', 'accent')] : []),
+    ...(isMissed(step) ? [s('missed', 'late')] : []),
   ];
 }
 
@@ -243,15 +290,71 @@ export async function showGoal(k: Store, ref: string): Promise<Block[]> {
     blank(),
     heading('STEPS', 'muted'),
     table(view.steps.map((st) => stepRow(st, day))),
+    ...(goal.status === 'active' && goal.missedInARow >= 2 ? [warn(`${goal.missedInARow} planned steps missed in a row. Do the smaller version of the next one, so it doesn't become a habit.`)] : []),
+    ...(await reviewBlocks(k, view)),
     ...nextHint(view),
     data(goalData(view)),
   ];
 }
 
+async function reviewBlocks(k: Store, view: GoalView): Promise<Block[]> {
+  const review = view.goal.status === 'active' ? null : await goalReview(k, view.goal.id);
+  if (!review) return [];
+  const answer = (label: string, text: string | null) => (text ? [[s(label, 'muted'), s(text)]] : []);
+  return [
+    blank(),
+    heading('REVIEW', 'muted'),
+    table(
+      [
+        [s('days', 'muted'), s(`planned ${review.plannedDays}, took ${review.tookDays}`)],
+        ...answer('happened', review.happened),
+        ...answer('why', review.why),
+        ...answer('next time', review.change),
+      ],
+      2,
+    ),
+  ];
+}
+
 // ---- goal done, goal drop, goal step done ----
 
-async function closeBlocks(k: Store, ref: string, outcome: 'done' | 'dropped'): Promise<Block[]> {
-  const view = await closeGoal(k, ref, outcome);
+const REVIEW_KEYS = ['happened', 'why', 'change'] as const;
+
+/** `happened:"..." why:"..." change:"..."` given inline, or null when none is. */
+function reviewInline(p: Parsed): ReviewAnswers | null {
+  const answers: ReviewAnswers = {};
+  let any = false;
+  for (const tok of p.raw) {
+    const kv = tok.quoted ? null : /^([a-z]+):(.*)$/s.exec(tok.text);
+    const key = kv?.[1] as (typeof REVIEW_KEYS)[number] | undefined;
+    if (!kv || !key || !(REVIEW_KEYS as readonly string[]).includes(key)) continue;
+    answers[key] = kv[2] ?? '';
+    any = true;
+  }
+  return any ? answers : null;
+}
+
+/** "Planned 24 days, took 31: 7 days over." */
+export function planVsTookText(view: GoalView, today: string): string {
+  const { plannedDays, tookDays } = planVsTook(view.goal, today);
+  const diff = tookDays - plannedDays;
+  const days = (n: number) => `${n} day${n === 1 ? '' : 's'}`;
+  return `Planned ${days(plannedDays)}, took ${tookDays}${diff > 0 ? `: ${days(diff)} over` : diff < 0 ? `: ${days(-diff)} early` : ', on time'}.`;
+}
+
+/** The after-action review: three questions, each one skippable. `lead` goes before the first. */
+export async function* askReview(view: GoalView, today: string, lead: Block[] = []): Flow<ReviewAnswers> {
+  const happened = yield {
+    blocks: [...lead, line([s('◆ ', 'accent'), s(planVsTookText(view, today))]), hint('Your answers help pad the deadline of your next goal.')],
+    question: { prompt: 'What happened, against the plan?', hint: SKIP },
+  };
+  const why = yield { blocks: [], question: { prompt: 'Why?', hint: SKIP } };
+  const change = yield { blocks: [], question: { prompt: 'What will you change next time?', hint: SKIP } };
+  return { happened, why, change };
+}
+
+export async function closeBlocks(k: Store, ref: string, outcome: 'done' | 'dropped', answers: ReviewAnswers = {}): Promise<Block[]> {
+  const view = await closeGoal(k, ref, outcome, answers);
   const open = view.steps.filter((st) => st.status === 'open').length;
   const r = goalRef(view.goal);
   return [
@@ -276,3 +379,26 @@ async function stepDone(k: Store, p: Parsed): Promise<Block[]> {
     data(goalData(view)),
   ];
 }
+
+// ---- goals in today, review and the summary ----
+
+/** A goal on one line: ref, title, then `extra`, progress and the deadline. */
+export function goalRow(view: GoalView, today: string, extra: Span[] = []): Span[] {
+  const ref = goalRef(view.goal);
+  return [s(ref, 'muted', { ref }), s(view.goal.title), ...extra, s(progressLabel(view.steps), 'muted'), dueSpan(view, today)];
+}
+
+/** "next: Run 2 km at the park · today 7:00 · park", under a goal's row. The cue is in `today` tone on its day, `late` once it has passed. */
+export function nextStepLine(view: GoalView, today: string): Block {
+  const next = view.steps.find((st) => st.status === 'open');
+  if (!next) return line([s('all steps done · close it with ', 'muted'), s(`goal done ${goalRef(view.goal)}`, 'accent')], 6);
+  const day = next.cueAt?.slice(0, 10);
+  const when = day ? `${day === today ? 'today' : day < today ? formatDay(day, today) : describeDue(day, today).text} ${next.cueAt!.slice(11)}` : null;
+  const cue = [when, next.cuePlace].filter(Boolean).join(' · ');
+  const tone = !day ? 'muted' : day === today ? 'today' : day < today ? 'late' : 'muted';
+  return line([s('next: ', 'muted'), s(next.text), ...(cue ? [s(` · ${cue}`, tone)] : [])], 6);
+}
+
+/** Steps marked done from `from` to `to`, by local day. */
+export const stepsDoneIn = (view: GoalView, from: string, to: string) =>
+  view.steps.filter((st) => st.doneAt && ymd(new Date(st.doneAt)) >= from && ymd(new Date(st.doneAt)) <= to).length;

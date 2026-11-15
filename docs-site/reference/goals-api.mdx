@@ -13,6 +13,12 @@ With a login set up ([phone login](/guides/phone-login)), every route needs a Go
 | `GET /api/goals/g1` | One goal with its steps |
 | `POST /api/goals` | Creates a goal. Answers `201` with the goal |
 | `POST /api/goals/g1/steps/2/done` | Marks step 2 done. Answers with the goal |
+| `POST /api/goals/g1/close` | Closes the goal as done or dropped, with its review. Answers with the goal |
+| `GET /api/goals/padding?dueOn=2026-11-08` | How late past goals ran, and that deadline padded to allow for it |
+| `GET /api/goals/push` | The key a device needs to turn on reminders, as `{ publicKey }` |
+| `POST /api/goals/push/subscribe` | Turns on reminders for this device. Answers `201` |
+| `POST /api/goals/push/unsubscribe` | Turns them off for this device |
+| `POST /api/goals/push/test` | Sends a test reminder to every device, as `{ sent, removed, failed }` |
 
 ## Creating a goal
 
@@ -33,13 +39,42 @@ With a login set up ([phone login](/guides/phone-login)), every route needs a Go
 
 `dueOn` is a day (`YYYY-MM-DD`) and `cueAt` a local time (`YYYY-MM-DDTHH:MM`). `appetite`, `obstacle` and each step's `cueAt`, `cuePlace` and `minimum` are optional. The first step is the first one in the list, unless one has `"firstStep": true`. Send it with `content-type: application/json`.
 
+## Closing a goal
+
+```json
+{ "outcome": "done", "happened": "Ran it, 3 days late", "why": "Two rainy weeks", "change": "Plan the treadmill first" }
+```
+
+`outcome` is `done` or `dropped`. The three answers are optional, as in `goal done`. A goal already closed, here or on another device, answers `409`.
+
+## Deadline padding
+
+```json
+{ "today": "2026-10-26", "padding": { "goals": 2, "percent": 30, "note": "Your last 2 goals took 30% longer than planned." }, "paddedOn": "2026-11-08" }
+```
+
+`padding` comes from the last 3 goals closed as done, and is `null` when they ran less than 10% late (or there are none). `paddedOn` is `dueOn` stretched by the same share from `today`, or `null` without padding or `dueOn`.
+
+## Reminders
+
+Reminders are web push notifications, sent by `keel serve` itself through each browser's push service (no other service involved). The key pair is made the first time a device asks for `GET /api/goals/push`, and kept with Keel's other secrets: the macOS Keychain, the system keyring, or a file only you can read.
+
+`subscribe` takes the browser's subscription as it comes, from `PushSubscription.toJSON()`:
+
+```json
+{ "endpoint": "https://web.push.apple.com/...", "keys": { "p256dh": "BNcR...", "auth": "tBHI..." } }
+```
+
+`unsubscribe` takes `{ "endpoint" }`, and answers `404` when that device wasn't getting reminders. A device the push service reports as gone is forgotten on the next send (`removed`). When the server has no push set up, these routes answer `503`.
+
 ## Errors
 
-Every error has the same shape: `{ "error", "hint", "field" }`. `field` names the input it is about (`title`, `doneMeans`, `dueOn`, `plan`, `steps`), or is `null`.
+Every error has the same shape: `{ "error", "hint", "field" }`. `field` names the input it is about (`title`, `doneMeans`, `dueOn`, `plan`, `steps`, `outcome`, `endpoint`, `keys`), or is `null`.
 
 | Status | When |
 |---|---|
 | `400` | Something to fix in the request, such as a plan that doesn't read "If ..., then ..." |
 | `404` | No such goal, or no such step |
+| `503` | Reminders aren't available on this server |
 | `409` | Someone got there first: the step was already done, or the goal is closed. `error` says when |
 | `415` | The body isn't JSON |

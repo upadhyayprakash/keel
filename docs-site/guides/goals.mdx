@@ -35,6 +35,17 @@ goal new "Read a book" done:"last page" due:+3w obstacle:"tired evenings" plan:"
 
 With `--json`, nothing is asked, so give `done:`, `due:`, `obstacle:`, `plan:` and at least one `step:`.
 
+### A deadline that allows for being late
+
+Most plans take longer than we expect. Once you have finished a goal or two, Keel compares how long your last three finished goals took with what you planned. If they ran at least 10% late, it offers a later deadline right after you give yours:
+
+```text
+◆ Your last 2 goals took 30% longer than planned. Tue 17 Nov would allow for that.
+? Use Tue 17 Nov instead?  y · enter keeps Sun 8 Nov
+```
+
+Dropped goals don't count, since they never reached the finish line. A deadline given inline (`due:`) is kept as you wrote it.
+
 ## On your phone
 
 With `keel serve` running, open `/goals` on your phone (see [phone login](/guides/phone-login) to reach it from outside your computer). Tap **+ New goal**:
@@ -42,7 +53,11 @@ With `keel serve` running, open `/goals` on your phone (see [phone login](/guide
 1. **The finish line:** the goal, what done means, the deadline and the time you will give it.
 2. **The plan for the hard part:** what is most likely to stop you, then your plan as two blanks, "If ..." and "then I will ...". Keel needs the plan to save. Then add steps, the first one tiny, each with an optional time, place and minimum version.
 
+Once past goals ran late, a note under the deadline says so and offers a later day: tap **Use Thu 12 Nov** to take it (see [a deadline that allows for being late](#a-deadline-that-allows-for-being-late)).
+
 **Start goal** saves it, and Today shows it with its progress and its next step. Tap the round check to mark that step done, or tap the goal to see all of it: what done means, your plan, the steps still open (tick any of them) and the ones already done. Goals made on the phone and in the CLI are the same goals.
+
+To finish, tap **Close goal** on the goal's page. Choose **Done** or **Dropped on purpose**, see how long it took against the plan, and answer the same three questions as `goal done` (each one optional). **Close and save review** closes it.
 
 ### When your computer sleeps
 
@@ -57,6 +72,22 @@ goal show g1     # one goal and its steps (show g1 works too)
 ```
 
 Progress shows the smaller part: `1 of 4 done` until halfway, then `2 left`.
+
+### Missed steps
+
+While `keel serve` runs, it checks the times you planned. A step still open when the day of its time ends is **missed**: `goal show` marks it, and the goal counts the misses in a row. One miss is normal. At two in a row, `goal show` says so and suggests the smaller version of the next step, because a second miss is when a habit starts to slip ("never miss twice"). Marking any step done starts the count again.
+
+Keel judges missed steps only while `keel serve` is running, and catches up on the ones it slept through when it starts again.
+
+`today` lists your active goals under **GOALS**, each with its next step and when and where you planned it:
+
+```text
+GOALS
+  g1  Run 5 km   1 of 4 done   Sun 8 Nov
+      next: Run 2 km at the park · today 07:00 · the park
+```
+
+The Friday [review](/guides/weekly-review) goes through each goal too: the steps you did this week, then keep going, close it as done, or drop it (with the three review questions below). `summary` counts the steps done on each goal in the week. A `+client` view leaves goals out, since a goal belongs to you, not a client.
 
 ## Move it along
 
@@ -73,4 +104,22 @@ goal done g1
 goal drop g1
 ```
 
-A closed goal stays closed. Start a new one with `goal new`.
+Keel shows how long it took against the plan, then asks three short questions. Each one can be skipped with Enter:
+
+```text
+◆ Planned 27 days, took 31: 4 days over.
+  Your answers help pad the deadline of your next goal.
+? What happened, against the plan?
+? Why?
+? What will you change next time?
+```
+
+`goal show g1` shows the answers under **REVIEW**, and `export --md` includes them. To answer in one line, give any of `happened:`, `why:` and `change:`, and Keel asks none of them:
+
+```text
+goal drop g2 happened:"Lost interest after week 1" change:"Pick a goal I want, not one I should"
+```
+
+With `--json`, the questions are skipped. Closing a goal from the Friday review asks the same three questions.
+
+A closed goal stays closed. If you closed it on another device first, Keel says so before asking anything. Start a new one with `goal new`.
