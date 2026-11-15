@@ -120,7 +120,7 @@ export const review: Command = {
 
     // 5. Projects and their resume notes
     step(5);
-    const projects = (await k.listProjects()).filter((pv) => pv.project.status === 'active');
+    const projects = (await k.listProjects()).filter((pv) => pv.project.status === 'active' && !pv.project.isDefault);
     if (projects.length === 0) pending.push(hint('No active projects.'));
     for (const pv of projects) {
       const note = await k.latestResumeNote(pv.project.id);

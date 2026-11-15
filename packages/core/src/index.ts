@@ -3,8 +3,12 @@ export { contentCounts, exportJson, importDump, isEmpty, parseExport } from './c
 export { isConnectionError } from './db/client';
 export { renderText, type Paint } from './render-text';
 export { Conflict, KeelError, NotFound } from './errors';
-export { goalData } from './commands/shared';
+export { goalData, listData, listSummary } from './commands/shared';
+export { COVER_PLACEHOLDER } from './cover-placeholder';
 export * from './goals';
+export * from './lists';
+export * from './covers';
+export { keyBetween, keysBetween } from './fractional';
 export { VERSION } from './version';
 export { autoBackup, type AutoBackupOptions } from './auto-backup';
 export * from './blocks';

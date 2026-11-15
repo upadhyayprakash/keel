@@ -3,6 +3,9 @@ import { authState, goSignIn, needsSignIn, unreachable } from './api';
 import { useRoute } from './router';
 import { CloseGoal } from './screens/CloseGoal';
 import { GoalDetail } from './screens/GoalDetail';
+import { ListDetail } from './screens/ListDetail';
+import { Lists } from './screens/Lists';
+import { NewList } from './screens/NewList';
 import { NewGoal } from './screens/NewGoal';
 import { Today } from './screens/Today';
 import { Header } from './ui';
@@ -33,6 +36,9 @@ function Screen() {
   if (route.name === 'new') return <NewGoal />;
   if (route.name === 'goal') return <GoalDetail key={route.ref} goalRef={route.ref} />;
   if (route.name === 'review') return <CloseGoal key={route.ref} goalRef={route.ref} />;
+  if (route.name === 'lists') return <Lists />;
+  if (route.name === 'list-new') return <NewList />;
+  if (route.name === 'list') return <ListDetail key={route.ref} listRef={route.ref} />;
   return <Today />;
 }
 

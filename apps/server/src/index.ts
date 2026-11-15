@@ -7,6 +7,7 @@ import { Hono, type Context } from 'hono';
 import { parsePublicUrl, type Keel } from '@keel/core';
 import { authRoutes, requireSession, type AuthOptions } from './auth';
 import { goalRoutes } from './goals';
+import { listRoutes } from './lists';
 import { pushRoutes, pushSender, type PushOptions } from './push';
 import { startScheduler } from './scheduler';
 
@@ -77,7 +78,7 @@ export function createApp({ keel, port, webDist = defaultDist('web'), goalsDist 
     const terminal = requireSession(auth.store, 'terminal');
     app.use('/api/*', (c, next) => {
       if (c.req.path.startsWith('/api/auth/')) return next();
-      const goalsRoute = c.req.path === '/api/goals' || c.req.path.startsWith('/api/goals/');
+      const goalsRoute = ['/api/goals', '/api/lists'].some((root) => c.req.path === root || c.req.path.startsWith(`${root}/`));
       return goalsRoute ? goals(c, next) : terminal(c, next);
     });
   }
@@ -102,6 +103,7 @@ export function createApp({ keel, port, webDist = defaultDist('web'), goalsDist 
 
   pushRoutes(app, keel, push);
   goalRoutes(app, keel);
+  listRoutes(app, keel);
   app.get('/api/complete', async (c) => c.json(await keel.complete(c.req.query('line') ?? '')));
 
   // A built app's files, or its index.html for any other path inside it (client-side routes).

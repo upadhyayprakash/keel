@@ -82,6 +82,11 @@ export function Today() {
         <Button onClick={() => go('new')} disabled={!loaded.live}>
           + New goal
         </Button>
+        <p className="lists-link">
+          <button type="button" className="btn btn-link" onClick={() => go('lists')}>
+            Your lists
+          </button>
+        </p>
       </div>
     </>
   );

@@ -2,6 +2,7 @@ import { s, type Block, type Question, type Span } from '../blocks';
 import { describeDue } from '../dates';
 import { KeelError } from '../errors';
 import { goalRef, progressLabel, type GoalView } from '../goals';
+import { listRef, progressOf, shownItems, tagList, type ListView } from '../lists';
 import { parseRef, type Parsed } from '../parse';
 import { isMissed } from '../reminders';
 import type { CommitmentView, InboxItem, ProjectView, ResumeNote, Store } from '../store';
@@ -149,6 +150,56 @@ export function goalData({ goal, steps }: GoalView) {
     missedInARow: goal.missedInARow,
     createdAt: goal.createdAt,
     closedAt: goal.closedAt,
+  };
+}
+
+export function listData(view: ListView) {
+  const { list, project, items } = view;
+  return {
+    ref: listRef(list),
+    id: list.id,
+    name: list.name,
+    description: list.description,
+    tags: tagList(list),
+    kind: list.kind,
+    viewSort: list.viewSort,
+    pinned: list.pinned,
+    status: list.status,
+    project: project.path,
+    projectRef: `p${project.project.refNo}`,
+    /** Null for a plain list, which shows no progress. */
+    progress: list.kind === 'tracked' ? progressOf(items) : null,
+    /** Which cover is set, not its bytes (they can be 200 KB). Null: the default placeholder. */
+    cover: list.coverKind ? { kind: list.coverKind, dark: Boolean(list.coverDark), bytes: Buffer.byteLength(list.cover ?? '') + Buffer.byteLength(list.coverDark ?? '') } : null,
+    resetCount: list.resetCount,
+    lastResetAt: list.lastResetAt,
+    createdAt: list.createdAt,
+    /** Changes whenever the list does; a cover URL adds it so a new cover is fetched again. */
+    updatedAt: list.updatedAt,
+    /** In stored order; `number` is what the CLI uses. `shownOrder` lists the numbers in the order the list is set to show. */
+    items: items.map((i, n) => ({ number: n + 1, id: i.id, text: i.text, note: i.note, state: i.state, doneAt: i.doneAt })),
+    shownOrder: shownItems(view).map((i) => items.findIndex((x) => x.id === i.id) + 1),
+  };
+}
+
+/** A list without its items, for a gallery: how many there are, and a few to preview. */
+export function listSummary(view: ListView) {
+  const { list, project, items } = view;
+  return {
+    ref: listRef(list),
+    id: list.id,
+    name: list.name,
+    description: list.description,
+    tags: tagList(list),
+    kind: list.kind,
+    pinned: list.pinned,
+    status: list.status,
+    project: project.path,
+    projectRef: `p${project.project.refNo}`,
+    progress: list.kind === 'tracked' ? progressOf(items) : null,
+    itemCount: items.length,
+    cover: list.coverKind ? { kind: list.coverKind, dark: Boolean(list.coverDark) } : null,
+    updatedAt: list.updatedAt,
   };
 }
 

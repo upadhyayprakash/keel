@@ -7,6 +7,7 @@ import { SELF, isSelf } from '../self';
 import { CLIENT_HUES } from '../palettes';
 import type { Parsed } from '../parse';
 import type { ProjectView, Store } from '../store';
+import { listCountsByProject } from '../lists';
 import { projectData, projectSpan, refArg, type Command, type Flow } from './shared';
 
 const SLUG = /^[a-z0-9][a-z0-9-]*$/;
@@ -200,10 +201,12 @@ async function newProject(k: Store, p: Parsed): Promise<Block[]> {
 }
 
 async function listProjects(k: Store, all: boolean): Promise<Block[]> {
-  const projects = await k.listProjects(all);
+  // A default project (the General shelf lists land on, ADR 0005) shows once it holds a list, or with --all.
+  const onShelf = await listCountsByProject(k);
+  const projects = (await k.listProjects(all)).filter((pv) => all || !pv.project.isDefault || onShelf.has(pv.project.id));
   if (projects.length === 0) return [hint('No projects yet. Add one: project new acme/website "Website rebuild"'), data({ projects: [] })];
   const ctx = await k.getSetting('context');
-  const hidden = all ? 0 : (await k.listProjects(true)).length - projects.length;
+  const hidden = all ? 0 : (await k.listProjects(true)).filter((pv) => pv.client.archivedAt).length;
   return [
     heading(`PROJECTS · ${projects.length}`),
     table(
@@ -252,11 +255,14 @@ interface Plan {
   commitments: number;
   resumeNotes: number;
   inboxItems: number;
+  lists: number;
 }
 
 const plural = (n: number, one: string) => `${n} ${one}${n === 1 ? '' : 's'}`;
-const describePlan = (plan: Plan) =>
-  `${plural(plan.commitments, 'commitment')}, ${plural(plan.resumeNotes, 'resume note')} and ${plural(plan.inboxItems, 'inbox item')}`;
+const describePlan = (plan: Plan) => {
+  const parts = [plural(plan.commitments, 'commitment'), plural(plan.resumeNotes, 'resume note'), plural(plan.inboxItems, 'inbox item'), ...(plan.lists ? [`${plural(plan.lists, 'list')} (with their items)`] : [])];
+  return `${parts.slice(0, -1).join(', ')} and ${parts.at(-1)}`;
+};
 
 function confirmStep(summary: string, name: string) {
   return {
@@ -266,7 +272,7 @@ function confirmStep(summary: string, name: string) {
 }
 
 async function deletionPlan(k: Store, projectIds: string[]): Promise<Plan> {
-  if (projectIds.length === 0) return { commitments: 0, resumeNotes: 0, inboxItems: 0 };
+  if (projectIds.length === 0) return { commitments: 0, resumeNotes: 0, inboxItems: 0, lists: 0 };
   const live = <T extends typeof t.commitments | typeof t.resumeNotes | typeof t.inboxItems>(table: T) =>
     k.db
       .select({ id: table.id })
@@ -276,6 +282,12 @@ async function deletionPlan(k: Store, projectIds: string[]): Promise<Plan> {
     commitments: (await live(t.commitments)).length,
     resumeNotes: (await live(t.resumeNotes)).length,
     inboxItems: (await live(t.inboxItems)).length,
+    lists: (
+      await k.db
+        .select({ id: t.lists.id })
+        .from(t.lists)
+        .where(and(inArray(t.lists.projectId, projectIds), isNull(t.lists.deletedAt)))
+    ).length,
   };
 }
 
@@ -287,6 +299,12 @@ async function deleteProjectsQueries(k: Store, projectIds: string[], at: string)
     k.db.update(t.commitments).set(gone).where(and(inArray(t.commitments.projectId, projectIds), isNull(t.commitments.deletedAt))),
     k.db.update(t.resumeNotes).set(gone).where(and(inArray(t.resumeNotes.projectId, projectIds), isNull(t.resumeNotes.deletedAt))),
     k.db.update(t.inboxItems).set(gone).where(and(inArray(t.inboxItems.projectId, projectIds), isNull(t.inboxItems.deletedAt))),
+    // Lists under these projects go too, with their items (ADR 0005).
+    k.db
+      .update(t.listItems)
+      .set(gone)
+      .where(and(isNull(t.listItems.deletedAt), inArray(t.listItems.listId, k.db.select({ id: t.lists.id }).from(t.lists).where(inArray(t.lists.projectId, projectIds))))),
+    k.db.update(t.lists).set(gone).where(and(inArray(t.lists.projectId, projectIds), isNull(t.lists.deletedAt))),
     ...projects.map((pr) => k.db.update(t.projects).set({ ...gone, slug: freed(pr.slug, pr.id) }).where(eq(t.projects.id, pr.id))),
     ...(await leaveIfInside(k, projectIds, at)),
   ];

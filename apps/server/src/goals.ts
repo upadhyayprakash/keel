@@ -23,7 +23,7 @@ import {
 // session (see index.ts). JSON field names are the same as `keel goal ... --json`.
 
 /** A problem with the request, in the user's words, with the field it is about. */
-function failure(c: Context, e: unknown) {
+export function failure(c: Context, e: unknown) {
   if (!(e instanceof KeelError)) throw e;
   const status = e instanceof NotFound ? 404 : e instanceof Conflict ? 409 : 400;
   return c.json({ error: e.message, hint: e.hint || null, field: e.field ?? null }, status);

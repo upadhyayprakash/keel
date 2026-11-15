@@ -103,6 +103,22 @@ describe('goals API with login on', () => {
   });
 });
 
+describe('lists API with login on', () => {
+  it('needs a Goals session, like goals', async () => {
+    for (const path of ['/api/lists', '/api/lists/l1', '/api/lists/l1/cover', '/api/lists/targets']) {
+      const res = await client().request(path);
+      expect(res.status, path).toBe(401);
+      expect(await res.json()).toEqual({ error: 'Sign in first.', signIn: 'goals' });
+    }
+    expect((await client().request('/api/lists', { body: { name: 'x' } })).status).toBe(401);
+    const browser = await pairPhone();
+    expect(await (await browser.request('/api/lists')).json()).toEqual({ lists: [] });
+    expect((await browser.request('/api/lists/l1')).status).toBe(404);
+    // A path that only starts the same way is not a lists route.
+    expect((await browser.request('/api/listsx')).status).toBe(401);
+  });
+});
+
 describe('pairing', () => {
   it('adds the passkey and signs the phone in to Goals, not the terminal', async () => {
     const browser = await pairPhone();
