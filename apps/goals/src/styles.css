@@ -681,3 +681,298 @@ body {
   min-height: 0;
   padding: 0 0 0 4px;
 }
+
+/* ---- Lists (ADR 0005): the gallery, a list and its items. Same tokens as Goals; no new colors. ---- */
+
+.lists-link {
+  margin: 4px 0 0;
+  text-align: center;
+}
+
+.list-toolbar {
+  margin-bottom: 14px;
+}
+
+.list-toolbar .choice-row {
+  margin-top: 8px;
+}
+
+/* A cover, 16:9, whether it is a picture of its own or the built-in placeholder. */
+.cover {
+  display: block;
+  width: 100%;
+  aspect-ratio: 560 / 320;
+  border-radius: 8px;
+  background: var(--selection);
+  object-fit: cover;
+}
+
+.cover-large {
+  max-height: 200px;
+  margin-bottom: 12px;
+  object-fit: contain;
+}
+
+.list-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.list-grid .card {
+  height: 100%;
+  margin: 0;
+  padding: 10px;
+}
+
+.list-name {
+  margin: 8px 0 0;
+  overflow-wrap: anywhere;
+}
+
+.list-name .pin {
+  color: var(--t-today);
+}
+
+.list-grid .progress {
+  margin-top: 6px;
+}
+
+.list-tags {
+  margin: 4px 0 8px;
+  color: var(--t-muted);
+  font-size: 12px;
+}
+
+.list-about {
+  margin: 0 0 4px;
+  font-size: 13px;
+}
+
+@media (max-width: 340px) {
+  .list-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.kind-help {
+  margin: -8px 0 16px;
+}
+
+.empty {
+  margin: 14px 0;
+}
+
+.sort-row {
+  margin: 12px 0 4px;
+}
+
+.archived-note {
+  margin: 0 0 12px;
+}
+
+.complete-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin: 12px 0 0;
+}
+
+.confirm {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.confirm .btn {
+  white-space: nowrap;
+}
+
+.confirm .btn-primary {
+  width: auto;
+}
+
+/* The items. A row is the check (or a dot), the text, and a "more" button; the handle is the drag grip. */
+.items {
+  margin: 8px 0 12px;
+  padding: 0;
+  list-style: none;
+}
+
+.item {
+  position: relative;
+  border-bottom: 1px solid var(--line);
+  background: var(--bg);
+}
+
+.item-main {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.item-main .checkbox,
+.plain-item {
+  flex: 1;
+  min-width: 0;
+}
+
+.plain-item {
+  display: flex;
+  gap: 10px;
+  padding: 10px 0;
+}
+
+.plain-text,
+.item-main .checkbox-label {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.bullet {
+  flex: none;
+  width: 20px;
+  color: var(--t-muted);
+  text-align: center;
+}
+
+.item-done {
+  color: var(--t-muted);
+  text-decoration: line-through;
+}
+
+.item-note {
+  margin: 0;
+}
+
+.chip-state {
+  background: var(--selection);
+}
+
+.state-doing {
+  color: var(--t-today);
+}
+
+.state-blocked {
+  color: var(--t-late);
+}
+
+.handle,
+.more {
+  flex: none;
+  display: grid;
+  place-items: center;
+  min-width: 44px;
+  min-height: 44px;
+  border: 0;
+  background: none;
+  color: var(--t-muted);
+  font: inherit;
+  font-size: 18px;
+  cursor: pointer;
+}
+
+.handle {
+  margin-left: -12px;
+  cursor: grab;
+  /* The finger drags the row instead of scrolling the page. */
+  touch-action: none;
+}
+
+.handle svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 3;
+  stroke-linecap: round;
+}
+
+.items-dragging {
+  user-select: none;
+}
+
+.item-lifted {
+  z-index: 2;
+  border: 1px solid var(--t-accent);
+  border-radius: 8px;
+  background: var(--panel);
+  opacity: 0.92;
+}
+
+.drop-before::before,
+.drop-after::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--t-accent);
+}
+
+.drop-before::before {
+  top: -1px;
+}
+
+.drop-after::after {
+  bottom: -1px;
+}
+
+.item-editor {
+  padding: 4px 0 14px 28px;
+}
+
+.item-editor .field {
+  margin-bottom: 10px;
+}
+
+.add-item {
+  margin: 16px 0 0;
+}
+
+.add-item .field {
+  margin-bottom: 8px;
+}
+
+.list-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 18px 0 6px;
+}
+
+.list-section {
+  margin-top: 10px;
+  border-top: 1px solid var(--line);
+}
+
+.list-section summary {
+  min-height: 44px;
+  padding: 10px 0;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.list-section-body {
+  padding-bottom: 12px;
+}
+
+.list-section-body input[type='file'] {
+  display: block;
+  max-width: 100%;
+  margin: 4px 0 12px;
+  color: var(--t-default);
+  font: inherit;
+}
+
+.list-section-body select.input {
+  margin-bottom: 10px;
+}

@@ -48,16 +48,20 @@ Every command accepts `--json` and prints exactly one JSON object.
 | `ls` | `{ commitments: [...] }`, or `{ inbox: [...] }` for `ls inbox` |
 | `today` | Date, project you're working on, focus, due and late, follow-ups, coming up, going quiet, and `goals` (active goals, left out of a `+client` view) |
 | `show c12` | The commitment with its `history` |
-| `show p3` | The project with its resume note and open commitments |
+| `show p3` | The project with its resume note, open commitments and `lists` (ref, name, kind, item count) |
 | `goal new`, `goal show g1`, `goal step done`, `goal done`, `goal drop` | The goal with its `steps` (each with `missed` when its planned day ended with it open), `progress` (`done`, `total`, and a `label` like "1 of 4 done") and `missedInARow` |
 | `goals` | `{ goals: [...] }`, active ones unless you add `--all` |
+| `list new`, `list show l1`, `list add`, `list done`, `list state`, `list edit`, `list rm`, `list order`, `list set`, `list archive`, `list pin`, `list move`, `list cover` | The list: `ref`, `name`, `description`, `tags`, `kind`, `viewSort`, `pinned`, `status`, `project`, `progress` (`done`, `total`, `label`; `null` for a plain list), `cover` (`kind`, `dark`, `bytes`, or `null`: the cover's bytes are not in JSON), `items` (each with its `number`, `id`, `text`, `note`, `state`, `doneAt`) in stored order, and `shownOrder` (their numbers, in the order the list is set to show) |
+| `lists`, `list ls` | `{ lists: [...] }`, active ones unless you add `--archived` or `--all` |
+| `list reset l1` | The list, plus `reset: true`, or `reset: false` when there was nothing to reset |
+| `list delete l1` | `{ deleted, ref, items }` |
 | `summary` | Kept, renegotiated, slipped, kept rate, minutes per client, and `goals` with the steps done in the period (`stepsDone`) |
 | `help` | Every command with its usage and summary |
 
 ## Rules for scripts
 
 - Commands that ask questions skip them in JSON mode. `switch acme/app --json` switches without a resume note.
-- Deleting never happens in JSON mode unless you also pass `--yes`.
+- Deleting never happens in JSON mode unless you also pass `--yes`. The same goes for `list reset`, which changes every item.
 - `export` prints the export file itself, unwrapped, so `keel export > backup.json` works as a backup.
 - Field names are a public contract. Changes to them are noted in the [changelog](/changelog).
 

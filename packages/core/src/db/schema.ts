@@ -33,8 +33,15 @@ export const projects = sqliteTable(
     name: text('name').notNull(),
     status: text('status', { enum: ['active', 'paused', 'done', 'archived'] }).notNull().default('active'),
     lastTouchedAt: text('last_touched_at'),
+    /** The shelf lists land on when no project is named (ADR 0005). Found by this flag, never by name. */
+    isDefault: integer('is_default', { mode: 'boolean' }).notNull().default(false),
   },
-  (t) => [uniqueIndex('projects_ref').on(t.refNo), uniqueIndex('projects_client_slug').on(t.clientId, t.slug)],
+  (t) => [
+    uniqueIndex('projects_ref').on(t.refNo),
+    uniqueIndex('projects_client_slug').on(t.clientId, t.slug),
+    // At most one default project per client (ADR 0005); two devices making it at once cannot both win.
+    uniqueIndex('projects_one_default').on(t.clientId).where(sql`${t.isDefault} = 1 and ${t.deletedAt} is null`),
+  ],
 );
 
 export const resumeNotes = sqliteTable(
@@ -192,6 +199,50 @@ export const goalReviews = sqliteTable(
     change: text('change'),
   },
   (t) => [index('goal_reviews_goal').on(t.goalId), index('goal_reviews_outcome').on(t.outcome, t.createdAt)],
+);
+
+/** Lists (ADR 0005): a plain collection or a tracked checklist, always under a project. */
+export const lists = sqliteTable(
+  'lists',
+  {
+    ...base(),
+    refNo: integer('ref_no').notNull(),
+    projectId: text('project_id').notNull(),
+    name: text('name').notNull(),
+    description: text('description'),
+    /** A few tags or topics, space separated, like `commitments.tags`. */
+    tags: text('tags'),
+    /** `tracked` shows item states and "4 of 7 done"; `plain` shows the items alone. */
+    kind: text('kind', { enum: ['plain', 'tracked'] }).notNull().default('plain'),
+    /** How the items are shown. Never rewrites the stored `position`s. */
+    viewSort: text('view_sort', { enum: ['manual', 'state', 'created', 'alpha'] }).notNull().default('manual'),
+    pinned: integer('pinned', { mode: 'boolean' }).notNull().default(false),
+    status: text('status', { enum: ['active', 'archived'] }).notNull().default('active'),
+    /** Null: no cover set, so the built-in placeholder is shown. */
+    coverKind: text('cover_kind', { enum: ['svg', 'png'] }),
+    /** SVG source, or base64 of a PNG. At most 200 KB. */
+    cover: text('cover'),
+    /** Optional dark-theme version; without it `cover` is used in both themes. */
+    coverDark: text('cover_dark'),
+    resetCount: integer('reset_count').notNull().default(0),
+    lastResetAt: text('last_reset_at'),
+  },
+  (t) => [uniqueIndex('lists_ref').on(t.refNo), index('lists_project').on(t.projectId, t.status)],
+);
+
+export const listItems = sqliteTable(
+  'list_items',
+  {
+    ...base(),
+    listId: text('list_id').notNull(),
+    /** A fractional key (ADR 0005): sorts as text, and a drag writes only the dragged row. */
+    position: text('position').notNull(),
+    text: text('text').notNull(),
+    note: text('note'),
+    state: text('state', { enum: ['open', 'doing', 'blocked', 'done'] }).notNull().default('open'),
+    doneAt: text('done_at'),
+  },
+  (t) => [index('list_items_list').on(t.listId, t.position)],
 );
 
 /** A phone or browser that turned on Goals reminders (ADR 0004): where web push sends, and its keys. */

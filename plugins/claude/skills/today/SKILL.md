@@ -1,6 +1,6 @@
 ---
 name: today
-description: Read the user's Keel and answer what's on: today's focus, what's due or late, what they're waiting on, upcoming deadlines, or everything open for one client, project or person. Use for "what's on today", "what do I owe Ravi", "what's due this month", "where was I on acme/website". Read only.
+description: Read the user's Keel and answer what's on: today's focus, what's due or late, what they're waiting on, upcoming deadlines, their goals, their lists, or everything open for one client, project or person. Use for "what's on today", "what do I owe Ravi", "what's due this month", "where was I on acme/website", "how are my goals going", "what's on my grocery list". Read only.
 argument-hint: "[optional: +client, +client/project, @person, or a question]"
 allowed-tools: Bash(*keel-run.sh*)
 ---
@@ -29,9 +29,14 @@ Pick what the question needs:
 | upcoming deadlines over a period | `ls owe` and `ls wait`, then filter by `dueOn` yourself |
 | how the week went | `summary week` |
 | what's in the inbox | `ls inbox` |
+| my goals, how a goal is going (Keel 0.5.0 or newer) | `goals`, `goal show g1` (`today` already lists active goals with their next step) |
+| my lists, what's on a list (Keel 0.5.0 or newer) | `list`, `list ls #tag`, `list show l1` |
+| the lists of a project | `show p3` (its LISTS section), or `list ls +acme/website` |
 
 If the user named nothing (`$ARGUMENTS` is empty), run `today`.
 
 Reply briefly. Lead with what needs action (late, due today, focus), then what's coming, then what they're waiting on. Use refs (`c12`) so the user can act on them, and dates as weekday and day (`Thu 22 Oct`). For a project, show its resume note (where, next, unsure) first. Don't paste raw JSON.
+
+If a command answers `Unknown command` (`goal`, `goals`, `list`), the user's Keel is older than 0.5.0: say so and suggest `npm install -g @nouisi/keel`.
 
 Never run a command that changes data from this skill.

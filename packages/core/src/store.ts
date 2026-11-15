@@ -138,7 +138,7 @@ export class Store {
 
   // ---- refs and events ----
 
-  async nextRef(table: typeof t.commitments | typeof t.inboxItems | typeof t.projects | typeof t.goals): Promise<number> {
+  async nextRef(table: typeof t.commitments | typeof t.inboxItems | typeof t.projects | typeof t.goals | typeof t.lists): Promise<number> {
     const rows = await this.db
       .select({ m: sql<number>`coalesce(max(${table.refNo}), 0)` })
       .from(table as typeof t.commitments);

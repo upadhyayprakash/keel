@@ -9,6 +9,8 @@ allowed-tools: Bash(*keel-run.sh*)
 
 Turn the user's plain words into Keel commands and run them. Keel keeps commitments (things you owe and things you're waiting on), each with a person, a due date and usually a project.
 
+This skill is for commitments. For a list (groceries, a checklist, things to read) use the `lists` skill, and for a goal with a finish line and a plan (run 5 km by 8 November) use the `goals` skill.
+
 Run every command through the wrapper, which adds `--json` and prints exactly one JSON object:
 
 ```bash

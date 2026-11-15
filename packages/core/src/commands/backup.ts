@@ -8,11 +8,12 @@ import { whoName } from '../self';
 import * as t from '../db/schema';
 import { KeelError } from '../errors';
 import { goalRef, goalReview, listGoals } from '../goals';
+import { listLists, listRef, progressOf, tagList } from '../lists';
 import type { CommitmentView, Store } from '../store';
 import type { Command } from './shared';
 
-/** 2 added goals, their steps and reviews (ADR 0004). Version 1 files still import; an older Keel refuses version 2 instead of dropping goals. */
-const EXPORT_VERSION = 2;
+/** 2 added goals, their steps and reviews (ADR 0004); 3 added lists and their items, and `projects.isDefault` (ADR 0005). Older files still import; an older Keel refuses a newer file instead of dropping data. */
+const EXPORT_VERSION = 3;
 
 // Export keys, in insert order for import: parents before the rows that point at them.
 const TABLES = {
@@ -27,6 +28,8 @@ const TABLES = {
   goals: t.goals,
   goalSteps: t.goalSteps,
   goalReviews: t.goalReviews,
+  lists: t.lists,
+  listItems: t.listItems,
   events: t.events,
   settings: t.settings,
 } as const;
@@ -85,6 +88,7 @@ export const importCommand: Command = {
             label(counts.inboxItems, 'inbox item'),
             label(counts.resumeNotes, 'resume note'),
             ...(counts.goals ? [label(counts.goals, 'goal')] : []),
+            ...(counts.lists ? [label(counts.lists, 'list')] : []),
           ].join(', '),
           'default',
           { bold: true },
@@ -98,7 +102,7 @@ export const importCommand: Command = {
 export type ExportCounts = Partial<Record<TableName, number>>;
 
 /** Rows that make a database "have data" (settings alone don't count). */
-const CONTENT = ['clients', 'projects', 'people', 'commitments', 'inboxItems', 'resumeNotes', 'goals', 'goalSteps', 'goalReviews'] as const;
+const CONTENT = ['clients', 'projects', 'people', 'commitments', 'inboxItems', 'resumeNotes', 'goals', 'goalSteps', 'goalReviews', 'lists', 'listItems'] as const;
 
 /** How many live rows each content table holds. */
 export async function contentCounts(k: Store): Promise<Record<(typeof CONTENT)[number], number>> {
@@ -256,6 +260,22 @@ async function markdown(k: Store): Promise<string> {
           ...(review.change ? [`- Next time: ${review.change}`] : []),
         );
       }
+    }
+  }
+
+  const lists = await listLists(k, { status: 'all' });
+  if (lists.length) {
+    out.push('', '## Lists');
+    for (const view of lists) {
+      const tracked = view.list.kind === 'tracked';
+      out.push(
+        '',
+        `### ${listRef(view.list)} ${view.list.name} · ${view.project.path}${view.list.status === 'archived' ? ' · archived' : ''}${tracked ? ` · ${progressOf(view.items).label}` : ''}`,
+        ...(view.list.description ? ['', view.list.description] : []),
+        ...(view.list.tags ? ['', tagList(view.list).map((tag) => `#${tag}`).join(' ')] : []),
+        '',
+        ...view.items.map((item) => `- ${tracked ? `[${item.state === 'done' ? 'x' : ' '}] ` : ''}${item.text}${tracked && (item.state === 'doing' || item.state === 'blocked') ? ` (${item.state})` : ''}${item.note ? ` · ${item.note}` : ''}`),
+      );
     }
   }
 

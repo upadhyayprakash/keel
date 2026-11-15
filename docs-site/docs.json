@@ -49,6 +49,8 @@
           "guides/switching-projects",
           "guides/weekly-review",
           "guides/goals",
+          "guides/lists",
+          "guides/claude",
           "guides/tidying-up",
           "guides/browser-terminal",
           "guides/several-devices",
@@ -61,7 +63,7 @@
       },
       {
         "group": "Reference",
-        "pages": ["reference/commands", "reference/syntax", "reference/json", "reference/goals-api", "reference/environment"]
+        "pages": ["reference/commands", "reference/syntax", "reference/json", "reference/goals-api", "reference/lists-api", "reference/environment"]
       },
       {
         "group": "Project",

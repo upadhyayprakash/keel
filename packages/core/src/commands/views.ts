@@ -8,6 +8,8 @@ import { parseRef } from '../parse';
 import type { CommitmentView, Store } from '../store';
 import { listGoals } from '../goals';
 import { goalRow, nextStepLine, showGoal } from './goals';
+import { listLists, listRef, progressOf } from '../lists';
+import { showList } from './lists';
 import { commitmentData, commitmentRow, goalData, inboxData, matchesScope, noteData, projectData, projectSpan, type Command } from './shared';
 
 const STALE_DAYS = 7;
@@ -126,7 +128,7 @@ async function quietProjects(k: Store, open: CommitmentView[], scope: string | u
   const rows: QuietProject[] = [];
   const projects = await k.listProjects();
   for (const pv of projects) {
-    if (pv.project.status !== 'active') continue;
+    if (pv.project.status !== 'active' || pv.project.isDefault) continue;
     if (scope && !(scope.includes('/') ? pv.path === scope : pv.path.startsWith(`${scope}/`))) continue;
     const count = open.filter((v) => v.project === pv.path).length;
     if (count === 0) continue;
@@ -191,13 +193,14 @@ export const ls: Command = {
 
 export const show: Command = {
   name: 'show',
-  usage: 'show <c42|p7|i3|g1>',
+  usage: 'show <c42|p7|i3|g1|l1>',
   summary: 'Details and history of one item',
   async run(k, p) {
     // Goal refs are clickable like the others, so `show g1` shows the goal.
     if (/^g\d+$/i.test(p.words[0] ?? '')) return showGoal(k, p.words[0]!);
+    if (/^l\d+$/i.test(p.words[0] ?? '')) return showList(k, p.words[0]!);
     const ref = parseRef(p.words[0]);
-    if (!ref) throw new KeelError('Which item?', 'Example: show c42, show p7, show i3, show g1');
+    if (!ref) throw new KeelError('Which item?', 'Example: show c42, show p7, show i3, show g1, show l1');
     const day = k.today();
 
     if (ref.kind === 'c') {
@@ -233,6 +236,8 @@ export const show: Command = {
       const note = await k.latestResumeNote(pv.project.id);
       const openViews = await k.commitmentViews([eq(t.commitments.status, 'open'), eq(t.commitments.projectId, pv.project.id)]);
       const open = openViews.map((v) => commitmentRow(v, day));
+      // A project's lists are its artefacts (ADR 0005): shown here and nowhere in today or the review.
+      const lists = await listLists(k, { projectId: pv.project.id });
       return [
         line([s(`p${pv.project.refNo}  `, 'muted'), projectSpan(pv), s(`  ${pv.project.name} · ${pv.project.status}`, 'muted')]),
         blank(),
@@ -240,7 +245,14 @@ export const show: Command = {
         blank(),
         heading(`OPEN · ${open.length}`),
         ...(open.length ? [table(open)] : [hint('No open commitments.')]),
-        data({ ...projectData(pv), resumeNote: noteData(note), open: openViews.map(commitmentData) }),
+        ...(lists.length
+          ? [
+              blank(),
+              heading(`LISTS · ${lists.length}`),
+              table(lists.map((v) => [s(listRef(v.list), 'muted', { ref: listRef(v.list) }), s(v.list.name), v.list.kind === 'tracked' ? s(progressOf(v.items).label, 'muted') : s(`${v.items.length} item${v.items.length === 1 ? '' : 's'}`, 'muted')])),
+            ]
+          : []),
+        data({ ...projectData(pv), resumeNote: noteData(note), open: openViews.map(commitmentData), lists: lists.map((v) => ({ ref: listRef(v.list), name: v.list.name, kind: v.list.kind, items: v.items.length })) }),
       ];
     }
 

@@ -155,7 +155,7 @@ describe('export and import', () => {
     await createGoal(keel.store, goal());
     await completeStep(keel.store, 'g1', 1);
     const before = JSON.parse(await run('export'));
-    expect(before.version).toBe(2);
+    expect(before.version).toBe(3);
     expect(before.data.goals).toHaveLength(1);
     expect(before.data.goalSteps).toHaveLength(3);
     const file = join(dir, 'with-goals.json');
@@ -173,12 +173,12 @@ describe('export and import', () => {
     const old = JSON.parse(await run('export'));
     const v1 = join(dir, 'v1.json');
     writeFileSync(v1, JSON.stringify({ ...old, version: 1, data: { ...old.data, goals: undefined, goalSteps: undefined } }));
-    const v3 = join(dir, 'v3.json');
-    writeFileSync(v3, JSON.stringify({ ...old, version: 3 }));
+    const v4 = join(dir, 'v4.json');
+    writeFileSync(v4, JSON.stringify({ ...old, version: 4 }));
 
     keel.close();
     keel = await openTestKeel(() => now);
-    expect(await run(`import ${v3}`)).toContain('reads export versions 1 to 2, and the file is version 3');
+    expect(await run(`import ${v4}`)).toContain('reads export versions 1 to 3, and the file is version 4');
     expect(await run(`import ${v1}`)).toContain('Imported 1 client, 1 project');
   });
 

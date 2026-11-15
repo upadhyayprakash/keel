@@ -1,14 +1,16 @@
 {
   "name": "keel",
-  "owner": { "name": "Prakash Upadhyay" },
+  "owner": {
+    "name": "Prakash Upadhyay"
+  },
   "metadata": {
-    "description": "Claude Code plugin for Keel: save promises, follow-ups and deadlines to Keel in plain words."
+    "description": "Claude Code plugin for Keel: save promises and deadlines, keep lists, set and finish goals, all in plain words."
   },
   "plugins": [
     {
       "name": "keel",
       "source": "./plugins/claude",
-      "description": "Tell Claude what you owe, what you're waiting on and what's due; it saves it to Keel through the keel CLI.",
+      "description": "Tell Claude what you owe, what you're waiting on and what's due, keep lists and goals; it saves it all to Keel through the keel CLI.",
       "category": "productivity"
     }
   ]

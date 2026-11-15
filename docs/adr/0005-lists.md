@@ -175,3 +175,18 @@ CLI: `keel list new | ls | show | add | done | state | reset | archive | pin`. J
 - Promoting a list item to a commitment (possible later, like inbox triage).
 - Nested items, sub-lists and templates beyond Reset.
 - A `reusable` flag that remembers the Reset or Archive choice.
+
+## Implementation notes (2026-11-15)
+
+Added when the decision was built. The decision above stands; these are the places the build went further or chose differently.
+
+- **The phone offers drag only in manual order.** The stored order and the API do not care (`POST /api/lists/<ref>/items/<id>/move` and `list order` work from any view, and set the list back to manual, as decided). A finger drag in a sorted view would be a guess about where to put the item among rows that are not in stored order, so the sort buttons hide the handles and say to switch back to Manual.
+- **PNG covers are checked and size-capped, not re-compressed.** A PNG must be a real PNG of at most 200 KB; Keel does not palette-reduce it, since that needs an image tool Keel does not ship. SVG covers are cleaned by an allow-list (drawing elements and attributes only).
+- **Where a list goes with no project named.** The project you are working on, as `owe` and `in` do, then Personal / General when you are in none. `+client` alone is that client's General project, `+personal` is Personal. The confirmation names the project and says how to move the list.
+- **A dark cover must be the same kind as the light one** (both SVG or both PNG), because a list has one `coverKind`.
+- **Reset needs a confirmation** at the CLI (`--yes` skips it, and JSON mode needs `--yes`) and a second tap on the phone.
+- **The Reset or Archive offer** shows when the last item is ticked, and as a one-line hint on `list show` while the list is complete. It is not stored, so it is never a nag and never acts on its own.
+- **Equal position keys** (two devices adding at the end at once) are tolerated: the tie breaks on the item id, and the first drag renumbers the list.
+- **Limits** so one list stays sensible: 1000 items, 5 tags of up to 30 characters, 120 characters for a name, 300 for a description, 500 for an item.
+- **Export version 3** carries lists, their items and `projects.isDefault`. Versions 1 and 2 still import.
+- **Tracked lists on the phone are not kept offline.** Unlike Goals they show "Keel is not reachable" when `keel serve` is away; ADR 0003 allows no offline writes, and lists did not need a last-seen copy to be useful.
