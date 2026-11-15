@@ -73,6 +73,12 @@ goal show g1     # one goal and its steps (show g1 works too)
 
 Progress shows the smaller part: `1 of 4 done` until halfway, then `2 left`.
 
+### Missed steps
+
+While `keel serve` runs, it checks the times you planned. A step still open when the day of its time ends is **missed**: `goal show` marks it, and the goal counts the misses in a row. One miss is normal. At two in a row, `goal show` says so and suggests the smaller version of the next step, because a second miss is when a habit starts to slip ("never miss twice"). Marking any step done starts the count again.
+
+Keel judges missed steps only while `keel serve` is running, and catches up on the ones it slept through when it starts again.
+
 `today` lists your active goals under **GOALS**, each with its next step and when and where you planned it:
 
 ```text

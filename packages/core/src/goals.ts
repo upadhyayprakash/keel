@@ -223,6 +223,8 @@ export async function completeStep(k: Store, ref: string, position: number): Pro
             ),
           ),
       ),
+      // A step done ends a run of missed cues.
+      k.db.update(t.goals).set({ missedInARow: 0 }).where(and(eq(t.goals.id, view.goal.id), gt(t.goals.missedInARow, 0))),
       k.event('goal', view.goal.id, 'step done', { position, text: step.text }),
     ]);
   } catch (e) {

@@ -22,6 +22,7 @@ import {
   type ReviewAnswers,
 } from '../goals';
 import type { Parsed } from '../parse';
+import { isMissed } from '../reminders';
 import type { Store } from '../store';
 import { goalData, type Command, type Flow } from './shared';
 
@@ -255,6 +256,7 @@ function stepRow(step: GoalStep, today: string): Span[] {
     cue ? s(cue, 'muted') : s('-', 'dim'),
     ...(step.minimum ? [s(`or ${step.minimum}`, 'dim')] : []),
     ...(step.firstStep && !done ? [s('first step', 'accent')] : []),
+    ...(isMissed(step) ? [s('missed', 'late')] : []),
   ];
 }
 
@@ -288,6 +290,7 @@ export async function showGoal(k: Store, ref: string): Promise<Block[]> {
     blank(),
     heading('STEPS', 'muted'),
     table(view.steps.map((st) => stepRow(st, day))),
+    ...(goal.status === 'active' && goal.missedInARow >= 2 ? [warn(`${goal.missedInARow} planned steps missed in a row. Do the smaller version of the next one, so it doesn't become a habit.`)] : []),
     ...(await reviewBlocks(k, view)),
     ...nextHint(view),
     data(goalData(view)),

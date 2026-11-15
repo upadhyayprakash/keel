@@ -3,6 +3,7 @@ import { describeDue } from '../dates';
 import { KeelError } from '../errors';
 import { goalRef, progressLabel, type GoalView } from '../goals';
 import { parseRef, type Parsed } from '../parse';
+import { isMissed } from '../reminders';
 import type { CommitmentView, InboxItem, ProjectView, ResumeNote, Store } from '../store';
 
 /** One pause in an interactive command: what to show, then what to ask. */
@@ -143,7 +144,9 @@ export function goalData({ goal, steps }: GoalView) {
       firstStep: st.firstStep,
       status: st.status,
       doneAt: st.doneAt,
+      missed: isMissed(st),
     })),
+    missedInARow: goal.missedInARow,
     createdAt: goal.createdAt,
     closedAt: goal.closedAt,
   };

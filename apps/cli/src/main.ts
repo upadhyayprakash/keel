@@ -117,7 +117,7 @@ async function main(): Promise<number> {
       await backup(keel, url);
       setInterval(() => void backup(keel, url), 60 * 60 * 1000); // a long-running server still rolls over at midnight
       setInterval(() => void keel.sync(), 30 * 1000); // pick up changes from other devices
-      const { checkServe, startServer } = await import('@keel/server');
+      const { checkServe, startServer, vapidFrom } = await import('@keel/server');
       const flag = (name: string) => {
         const i = args.indexOf(name);
         if (i < 0) return undefined;
@@ -144,7 +144,9 @@ async function main(): Promise<number> {
       }
       const secrets = await secretStore(HOME);
       const totpSecret = () => secrets.get(TOTP_ACCOUNT);
-      await startServer({ keel, port, host, tls, auth: login ? { store, publicUrl, totpSecret } : undefined });
+      // Push services may contact the sender: the owner's public address, or Keel's homepage.
+      const push = { vapid: vapidFrom(secrets), subject: publicUrl ? new URL(publicUrl).origin : 'https://nouisi-keel.mintlify.site' };
+      await startServer({ keel, port, host, tls, auth: login ? { store, publicUrl, totpSecret } : undefined, push });
       return new Promise<number>(() => {}); // runs until Ctrl+C
     }
 
