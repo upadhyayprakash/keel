@@ -1,0 +1,65 @@
+---
+title: "Lists API"
+description: "The HTTP routes the Lists screens of the phone app use, served by keel serve."
+---
+
+The phone app talks to Keel only through these routes, so the same rules apply on the phone, in the CLI and in the browser terminal. A list in a response has the same fields as `list show l1 --json` (see [JSON output](/reference/json)). Items are named by their `id` here, not by the CLI's number.
+
+With a login set up ([phone login](/guides/phone-login)), every route needs a Goals session or a terminal session, like [the Goals API](/reference/goals-api). Without one the answer is `401` with `{ "error": "Sign in first.", "signIn": "goals" }`.
+
+| Route | Does |
+|---|---|
+| `GET /api/lists` | Lists without their items, as `{ lists }`: pinned first, then the most recently changed. Add `?status=archived` or `all`, `?q=` (name, description, tags), `?tag=`, `?project=acme` or `acme/website` |
+| `GET /api/lists/targets` | Where a new list can go, as `{ targets: [{ value, label }] }` |
+| `POST /api/lists` | Creates a list. Answers `201` with the list |
+| `GET /api/lists/l1` | One list with its items |
+| `PATCH /api/lists/l1` | Changes any of `name`, `description`, `tags`, `kind`, `viewSort`, `pinned`, `status` |
+| `DELETE /api/lists/l1` | Deletes the list and its items: `{ deleted, ref, items }` |
+| `POST /api/lists/l1/move` | Moves it to `{ "project": "acme/website" }`, `"acme"` or `"personal"` |
+| `POST /api/lists/l1/reset` | Every item back to open. Answers with the list and `reset` (how many), `0` when there was nothing to do |
+| `POST /api/lists/l1/items` | Adds items at the end: `{ "texts": ["milk", "eggs"] }` or `{ "text": "milk" }`. Answers `201` |
+| `PATCH /api/lists/l1/items/<id>` | Changes one item: any of `text`, `note`, `state` |
+| `DELETE /api/lists/l1/items/<id>` | Removes one item |
+| `POST /api/lists/l1/items/<id>/move` | Puts it after another: `{ "afterId": "<item id>" }`, or `{ "afterId": null }` for first. Writes one row, and sets the list back to manual order |
+| `PUT /api/lists/l1/cover` | Sets the cover: `{ "kind": "svg", "data": "<svg ...>", "dark": "<svg ...>" }`. `kind` is `svg` or `png` (`data` is then base64), and `dark` is optional |
+| `DELETE /api/lists/l1/cover` | Clears it. The built-in cover shows again |
+| `GET /api/lists/l1/cover?theme=dark` | The cover itself, for an `<img>`. `404` when none is set |
+
+## Creating a list
+
+```json
+{
+  "name": "D-mart groceries",
+  "kind": "tracked",
+  "description": "Saturday shop",
+  "tags": ["groceries", "weekly"],
+  "project": "personal",
+  "pinned": false,
+  "items": ["milk", "eggs"]
+}
+```
+
+Only `name` is required. `kind` is `plain` (the default) or `tracked`. `project` is `acme/website`, `acme` (its General project) or `personal` (the default).
+
+## Items and order
+
+`state` is `open`, `doing`, `blocked` or `done`. Setting `done` on an item that is already done, here or on another device, answers `409` with when. Any other change is last write wins.
+
+The list's `items` are in stored order, and `shownOrder` is the item numbers in the order the list is set to show (`viewSort`: `manual`, `state`, `created` or `alpha`). Changing `viewSort` never changes the stored order.
+
+## Covers
+
+`data` is cleaned before it is saved: an SVG keeps only drawing elements and attributes. Each cover is at most 200 KB. The answer has `coverBytesTotal` and `overNotice`, which is `true` once all covers together pass 10 MB.
+
+The image is served with `content-type` `image/svg+xml` or `image/png`, `x-content-type-options: nosniff` and a content security policy that blocks everything, and with an `ETag` so `If-None-Match` answers `304`. `?theme=dark` gives the dark cover, or the one cover when there is no dark one.
+
+## Errors
+
+Every error has the same shape: `{ "error", "hint", "field" }`. `field` names the input it is about (`name`, `description`, `tags`, `kind`, `items`, `texts`, `project`, `state`, `viewSort`, `pinned`, `status`, `afterId`, `data`, `dark`), or is `null`.
+
+| Status | When |
+|---|---|
+| `400` | Something to fix in the request, such as a list with no name |
+| `404` | No such list, item or cover |
+| `409` | Someone got there first: the item was already done, or the list was deleted. `error` says when |
+| `415` | The body isn't JSON |

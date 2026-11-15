@@ -1,0 +1,111 @@
+---
+title: "Lists"
+description: "Keep things together under a project: a plain list, or a checklist you tick off and reuse."
+---
+
+A list is for the things that are not promises: groceries, a release checklist, packing for a trip, books to read. It has no person and no due date, and it stays out of `today` and the weekly review. You open it when you need it.
+
+There are two kinds:
+
+- **Plain** is just the things, with no boxes. Good for ideas, a reading list, a collection.
+- **Tracked** gives each item a state (**open**, **doing**, **blocked** or **done**) and counts them: "4 of 7 done". Good for anything you finish, or reuse.
+
+Switching a list between the two loses nothing: a tracked list keeps its item states while it is plain.
+
+## Start a list
+
+```text
+list new "D-mart groceries" --tracked #groceries #weekly item:milk item:eggs
+```
+
+```text
+✓ l1 D-mart groceries · tracked · in personal/general
+  Open it with: list show l1
+```
+
+`desc:"..."` adds a short description, `#tags` (up to five) are for searching, `--pin` keeps it first, and each `item:` adds an item.
+
+## Where a list goes
+
+A list always lives under a project, and shows as part of it (see the project with `show p3`).
+
+| You type | It goes to |
+|---|---|
+| `+acme/website` | That project |
+| `+acme` | Acme's **General** project, made the first time it is needed |
+| `+personal` | Your **Personal** client's General project |
+| nothing | The project you are working on, or Personal / General when you are in none |
+
+General is a shelf, not work: it never shows under "going quiet", is left out of the weekly review, and appears in `projects` only once it holds a list (or with `projects --all`). Move a list any time with `list move l1 +acme/website`.
+
+## Fill it in and work through it
+
+```text
+list add l1 item:bread item:rice
+list show l1
+list done l1 1 2 4-6
+list state l1 3 blocked
+list edit l1 3 "oat milk" note:"the blue one"
+list rm l1 5
+```
+
+Items are named by their number in `list show`. Each `item:` adds one item (`item:"oat milk"` for more than one word). Plain words after `list add l1` are one item together, so `list add l1 oat milk` adds "oat milk". In the Keel shell and the browser terminal, quoted texts also work (`list add l1 "bread" "rice"`), but a regular shell removes the quotes before Keel sees them, so use `item:` there.
+
+```text
+l1  D-mart groceries
+  project  personal/general
+  kind     tracked · 3 of 5 done
+
+ITEMS · 5
+  1  ✓  Milk
+  2  ✓  Eggs
+  3  ⊘  Bread  blocked
+  4  ○  Rice
+  5  ✓  Tea
+```
+
+### Order
+
+Items keep the order you give them. Move one with `list order l1 3 to 1`. To see the list another way without touching that order, set how it is shown: `list set l1 sort:state` (or `created`, `alpha`, `manual`). Numbers stay the same whichever way the list is shown. Moving an item sets the list back to manual order.
+
+## A list you use again
+
+When every item of a tracked list is done, Keel offers two things: **reset** (use it again) or **archive** (finished for good). It never archives on its own.
+
+```text
+list reset l1      # asks first. Add --yes to skip the question
+list archive l1    # hidden from `list`; bring it back with `list unarchive l1`
+```
+
+Reset puts every item back to open and counts how many times the list was reset.
+
+## Find your lists
+
+```text
+list                 # every active list, pinned first
+list ls #groceries   # by tag
+list ls milk         # by words in the name, description or tags
+list ls +acme        # by client or project
+list --archived
+```
+
+## On your phone
+
+With `keel serve` running, open `/goals/lists` (or tap **Your lists** at the bottom of Today). Every list is a card with its cover and progress. A list shows its items with a check box, a **drag handle** (hold and move it, or focus it and use the arrow keys), and a **⋯** button that opens the item: set its state, change the text or note, or remove it. Paste several lines into **Add items** to add them all. Reset, archive, pin, move to another project, edit and delete are under the list.
+
+Dragging works in manual order. Pick another sort and the handles hide until you switch back to **Manual**.
+
+## Covers
+
+A list with no cover shows a built-in picture. To set your own, use an SVG or PNG file of up to 200 KB, with an optional second file for the dark theme:
+
+```text
+list cover l1 ~/covers/groceries.svg dark:~/covers/groceries-dark.svg
+list cover l1 --clear
+```
+
+On the phone it is under **Cover** in the list. An SVG is cleaned when it is saved: scripts, styles, links and anything it loads from outside are removed, and it is only ever shown as an image. If all your covers together pass 10 MB, Keel tells you, as the sign that it is time to keep them somewhere else.
+
+## Deleting
+
+`list delete l1` asks you to type the ref, or take `--yes`. Deleting a project or a client deletes its lists too, and says how many. To keep a list but hide it, archive it.

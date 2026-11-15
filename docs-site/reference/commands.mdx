@@ -122,7 +122,7 @@ ls inbox
 Details and history of one item.
 
 ```text Usage
-show <c42|p7|i3|g1>
+show <c42|p7|i3|g1|l1>
 ```
 
 ```bash Examples
@@ -130,6 +130,7 @@ show c12
 show p3
 show i5
 show g1
+show l1
 ```
 
 ## Close the loop
@@ -347,6 +348,35 @@ goal step done g1 2
 goal done g1
 goal drop g1
 goal drop g1 happened:"lost interest" why:"it was not my goal" change:"pick one I want"
+```
+
+## Lists
+
+### list
+
+Keep plain lists and tracked checklists, under a project. Asks questions as it goes.
+
+```text Usage
+list [ls] [--archived|--all] [#tag] [+client[/project]] [words] | list new "<name>" [--tracked] [--pin] [desc:"..."] [item:"..."] [#tag ...] [+client/project] | list show l1 | list add l1 item:"milk" [item:"eggs" ...] | list done l1 1 2 4-6 | list state l1 3 blocked | list edit l1 3 "new text" [note:"..."] | list rm l1 3 | list order l1 3 to 1 | list set l1 [name:"..."] [desc:"..."] [kind:plain|tracked] [sort:manual|state|created|alpha] [#tag ...] | list reset l1 [--yes] | list archive|unarchive|pin|unpin l1 | list move l1 +client[/project] | list cover l1 <file.svg|file.png> [dark:<file>] | list cover l1 --clear | list delete l1 [--yes]
+```
+
+A plain list is just things. A tracked list gives each item a state (open, doing, blocked, done) and counts them: "4 of 7 done". Items are named by their number in `list show`. Lists live under a project: name one with `+client/project`, a client alone for its General project, or nothing for the project you are working on (or Personal). `lists` is the same as `list`. See [Lists](/guides/lists).
+
+```bash Examples
+list new "D-mart groceries" --tracked #groceries item:milk item:eggs
+list new "Release checklist" --tracked +acme/website
+list
+list ls #groceries
+list show l1
+list add l1 item:bread item:rice
+list done l1 1 2 4-6
+list state l1 3 blocked
+list order l1 3 to 1
+list set l1 sort:state
+list reset l1
+list archive l1
+list move l1 +acme/website
+list cover l1 ~/covers/groceries.svg dark:~/covers/groceries-dark.svg
 ```
 
 ## Data and settings

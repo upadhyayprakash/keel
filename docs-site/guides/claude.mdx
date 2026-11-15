@@ -1,0 +1,57 @@
+---
+title: "Keel from Claude Code"
+description: "Tell Claude what you owe, keep lists and set goals in plain words, and ask what's on today."
+---
+
+The Keel plugin for [Claude Code](https://claude.com/claude-code) lets you work with Keel by talking. Claude turns your words into the same commands you would type, runs them through the `keel` CLI, and tells you what it saved. It uses your own Keel and your own data, so everything it saves shows up in `keel today`, in the browser terminal and on your phone.
+
+## Install
+
+Install Keel first (Node 20.19 or newer), then the plugin, in Claude Code:
+
+```bash
+npm install -g @nouisi/keel
+```
+
+```text
+/plugin marketplace add upadhyayprakash/keel
+/plugin install keel@keel
+```
+
+Goals and lists need Keel 0.5.0 or newer. Update the plugin later with `/plugin marketplace update keel`.
+
+## What you can say
+
+Claude picks the right skill from what you say, or you can name it.
+
+| Skill | Say things like | What it does |
+|---|---|---|
+| `/keel:capture` | "I promised Ravi the pricing deck by Thursday for the Acme website." "c12 is sent." | Saves what you **owe** and are **waiting on**, marks them done, moves dates, writes resume notes |
+| `/keel:lists` | "Start a D-mart grocery list with milk, eggs and bread." "I bought the eggs." "Reset the grocery list." | Starts lists, adds and ticks items, sets states, reorders, archives, moves |
+| `/keel:goals` | "I want to run 5 km by 20 December." "I did step 2." "Close the running goal." | Sets a goal, marks steps done, closes or drops it with a review |
+| `/keel:today` | "What's on today?" "What do I owe Meera?" "How are my goals going?" "What's on my packing list?" | Reads Keel and answers. It never changes anything |
+
+## Goals: Claude asks first
+
+Keel cannot ask its questions through Claude, and a goal is only worth setting if the plan is yours. So when you say "I want to run 5 km by 20 December", Claude first asks for the parts only you can answer: what done looks like, what is most likely to get in the way, and your "If ..., then I will ..." plan, plus the steps. It may suggest a draft, and it saves nothing until you agree.
+
+Steps saved this way have no time or place. To add them, and a smaller version for a bad day, set the goal on your phone or run `keel goal new` yourself. Reminders need them.
+
+## What Claude will not do
+
+- It never deletes anything, and never resets a list, closes a goal or drops something unless you ask for that, naming it.
+- It never switches the project you are working on.
+- It asks before creating a client or project, before changing more than five items at once, and when a person, date, project or list is unclear.
+- It puts new lists where you say. With no project named, a personal list goes to Personal, so a grocery list never lands inside a work project by accident.
+
+## What Claude does not drive
+
+The commands that ask you a series of questions in the terminal (`triage`, `review`, `meeting`, and the notes on `switch`) are meant for you to run yourself. Claude saves their results directly instead: an `owe`, a `park`, a `done`.
+
+## Try it without touching your data
+
+```bash
+KEEL_HOME=/tmp/keel-try claude
+```
+
+Everything Claude saves in that session goes to `/tmp/keel-try`, not your real data. Delete the folder to start over.

@@ -35,7 +35,7 @@ const EXAMPLES: Record<string, { examples: string[]; note?: string }> = {
     note: 'Then type one line per item: `> pricing deck to @ravi due:thu` for something you owe, `< design files from @meera due:fri` for something you wait on, anything else is a note. An empty line ends the meeting and asks before saving.',
   },
   ls: { examples: ['ls', 'ls owe', 'ls wait @meera', 'ls overdue +acme', 'ls inbox'] },
-  show: { examples: ['show c12', 'show p3', 'show i5', 'show g1'] },
+  show: { examples: ['show c12', 'show p3', 'show i5', 'show g1', 'show l1'] },
   focus: { examples: ['focus c12 c15', 'focus clear'], note: 'Up to three. Everything else stays visible below the line.' },
   done: { examples: ['done c12'] },
   drop: { examples: ['drop c12', 'drop i5'] },
@@ -73,6 +73,25 @@ const EXAMPLES: Record<string, { examples: string[]; note?: string }> = {
     ],
     note: 'Asks what done looks like, the deadline, the time you will give it, what could get in the way and an if-then plan, then one step at a time with when and where it happens and a smaller version for a bad day. Anything given inline is not asked. When past goals ran late, it offers a padded deadline. `goal done` and `goal drop` ask three review questions (or take `happened:`, `why:` and `change:`). See [Goals](/guides/goals).',
   },
+  list: {
+    examples: [
+      'list new "D-mart groceries" --tracked #groceries item:milk item:eggs',
+      'list new "Release checklist" --tracked +acme/website',
+      'list',
+      'list ls #groceries',
+      'list show l1',
+      'list add l1 item:bread item:rice',
+      'list done l1 1 2 4-6',
+      'list state l1 3 blocked',
+      'list order l1 3 to 1',
+      'list set l1 sort:state',
+      'list reset l1',
+      'list archive l1',
+      'list move l1 +acme/website',
+      'list cover l1 ~/covers/groceries.svg dark:~/covers/groceries-dark.svg',
+    ],
+    note: 'A plain list is just things. A tracked list gives each item a state (open, doing, blocked, done) and counts them: "4 of 7 done". Items are named by their number in `list show`. Lists live under a project: name one with `+client/project`, a client alone for its General project, or nothing for the project you are working on (or Personal). `lists` is the same as `list`. See [Lists](/guides/lists).',
+  },
   help: { examples: ['help', 'help --json'] },
 };
 
@@ -101,6 +120,7 @@ const GROUPS: Array<[string, string[]]> = [
   ['Projects and context', ['switch', 'park', 'client', 'project', 'person']],
   ['Weekly', ['triage', 'review', 'summary']],
   ['Goals', ['goal']],
+  ['Lists', ['list']],
   ['Data and settings', ['export', 'import', 'theme', 'help']],
 ];
 
